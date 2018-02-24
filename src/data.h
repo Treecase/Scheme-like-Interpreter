@@ -9,6 +9,21 @@
 
 
 
+// error logging
+#define error(...)  fprintf (stderr, "Error: ");\
+                    fprintf (stderr, __VA_ARGS__)
+#define fatal(...)  error (__VA_ARGS__);\
+                    exit (-1)
+
+
+/* function datatype */
+struct func {
+    char          *name;
+    unsigned long argc;
+    char          *base;
+    int           baselen;
+};
+
 /* generic data struct */
 typedef struct {
     unsigned char type;
@@ -16,7 +31,7 @@ typedef struct {
         float         fval;
         int           ival;
         char          *str;
-        unsigned long func; // function table offset
+        struct func   func;
         unsigned long vari; // variable table offset
     } value;
 } Data;
@@ -28,7 +43,7 @@ enum data_types {
     T_INTEGER,
     T_FLOAT,
     T_STRING,
-    T_ERROR = (unsigned char)-1
+    T_ERROR = (unsigned char)-1,
 };
 
 /* s-expression struct */

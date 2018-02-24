@@ -10,10 +10,10 @@ OBJC=$(addprefix src/obj/, $(addsuffix .o, $(NAMES)))
 
 
 interpret : src/main.c $(OBJC)
-	$(CC) src/main.c $(OBJC) -o interpret
+	$(CC) -g src/main.c $(OBJC) -o interpret
 
 $(OBJC) : $(SRCS) $(HEADRS)
-	$(CC) -c $(SRCS)
+	$(CC) -g -c $(SRCS)
 	mv $(addsuffix .o, $(NAMES)) src/obj
 
 clean :

@@ -22,7 +22,7 @@ int main (int argc, char *argv[]) {
         printf ("> ");
 
         // read
-        char input[1024];// = "(define x 25.0)";
+        char input[1024];
         char c;
         memset (input, 0, 1024);
         for (int i = 0; i < 1024 && (c = getchar()) != EOF; ++i) {
@@ -45,7 +45,7 @@ int main (int argc, char *argv[]) {
         if (dat.type == T_STRING && dat.value.str)
             free (dat.value.str);
     }
-    dealloc_functable (&FUNC_TABLE);
+    //dealloc_functable (&FUNC_TABLE);
     dealloc_vartable  (&VAR_TABLE);
 
     return 0;

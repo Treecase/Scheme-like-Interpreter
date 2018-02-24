@@ -15,9 +15,9 @@ void print_data (Data d, char endl);
 
 Data expressionize (char *input, int end);
 
-Data eval (S_Exp expression);
+Data eval (Data *expression, int len);
 
-Data call (unsigned long func, unsigned int argc, Data *args);
+Data call (struct func func, unsigned int argc, Data *args);
 
 #endif
 

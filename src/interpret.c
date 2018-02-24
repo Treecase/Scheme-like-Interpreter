@@ -14,6 +14,9 @@
 #include "primitive.h"
 
 
+Data *append (Data *list, int *index, int *len, Data dat);
+char *appens (char *str,  int *index, int *len, char chr);
+
 
 /* print_data: print value of a data */
 void print_data (Data d, char endl) {
@@ -26,13 +29,13 @@ void print_data (Data d, char endl) {
         printf ("%f%c", d.value.fval, endl);
         break;
     case T_STRING:
-        printf ("%s%c", d.value.str, endl);
+        printf ("\"%s\"%c", d.value.str, endl);
         break;
     case T_FUNC:
-        printf ("%s%c", FUNC_TABLE.func[d.value.func].name, endl);
+        printf ("%s%c", d.value.func.name, endl);
         break;
     case T_VARIABLE:
-        print_data (VAR_TABLE.data[d.value.vari], endl);
+        printf ("%s%c", VAR_TABLE.names[d.value.vari], endl);
         break;
     case T_ERROR:
         printf ("ERROR%c", endl);
@@ -46,123 +49,135 @@ void print_data (Data d, char endl) {
 /* expressionize: convert a string into an s-expression */
 Data expressionize (char *string, int end) {
 
-    S_Exp exp;
-    int   data_i      = 0;
-    exp.len           = 3;
-    exp.data          = calloc (1, sizeof(Data) * exp.len);
+    int  explen       = 0;
+    int  expmax       = 3;
+    Data *exp         = calloc (3, sizeof(Data) * expmax);
+    int  data_i       = 0;
 
-    int   sstr_i      = 0;
-    int   sstr_len    = 10;
-    char  *substring  = calloc (sstr_len, 1);
+    int  sstr_i       = 0;
+    int  sstr_len     = 10;
+    char *substring   = calloc (sstr_len, 1);
 
     static int offset = 0;
 
-    char c;
-    int i, l;
-    i = l = 0;
+    char c, is_define;
+    int i;
+    is_define = i = 0;
 
     if (string[0] == '(')
         i = 1;
 
-    for (; string[i-1] != ')' && i < end; ++i, ++offset) {
+    for (; i <= end; ++i, ++offset) {
+
+        if (string[i] == ')')
+            end = i;
 
         c = string[i];
 
+        if (!is_define && data_i != 0 && exp[0].type == T_FUNC
+         && !strcmp (exp[0].value.func.base, "P_DEF"))
+            is_define = 1;
+
         // eval subexpression + append
         if (c == '(') {
-            exp.data[data_i++] = expressionize (string+i+1, end);
-            if (data_i >= exp.len) {
-                exp.len *= 2;
-                exp.data = realloc (exp.data, sizeof(Data) * exp.len);
+            /*if (is_define) {
+                int  decl  = 5;
+                char *decs = malloc (decl);
+                int s_i = 0;
+                for (; string[i-1] != ')' && i < end; ++i)
+                    decs = appens (decs, &s_i, &decl, string[i]);
+                exp = append (exp, &data_i, &expmax,
+                    (Data){ T_STRING, { .str=strdup (decs) } });
+                printf ("add %s\n", decs);
             }
-            i += offset-1;
-            l++;
+            else {*/
+                exp = append (exp, &data_i, &expmax,
+                    expressionize (string+i+1, end));
+                explen++;
+            //}
         }
         /* eval substring function
             + clear substring */
-        else if (isspace (c) || c == ')' || c == EOF) {
+        else if ((isspace (c) || c == ')' || i+1 > end)
+          && substring[0]) {
             //printf ("add %s\n", substring);
 
-            char *f = NULL;
-            if (exp.data[0].type == T_FUNC
-             && exp.data[0].value.func < FUNC_TABLE.len)
-                f = FUNC_TABLE.func[exp.data[0].value.func].base;
             // check for def'ing
-            if (data_i != 1 || f == NULL || strcmp (f, "P_DEF"))
-                exp.data[data_i++] = symbol_lookup (substring);
-            else
-                exp.data[data_i++] = (Data){ T_STRING,
-                    { .str=strdup (substring) } };
-
-            if (data_i >= exp.len) {
-                exp.len *= 2;
-                exp.data = realloc (exp.data, sizeof(Data) * exp.len);
+            if (data_i == 1 && is_define) {
+                exp = append (exp, &data_i, &expmax,
+                    (Data){ T_STRING, { .str=strdup (substring) } });
+                explen++;
             }
+            else {
+                exp = append (exp, &data_i, &expmax,
+                    symbol_lookup (substring));
+                explen++;
+            }
+
             memset (substring, 0, sstr_len);
             sstr_i = 0;
-            l++;
         }
         // add to substring
-        else {
-            substring[sstr_i++] = c;
-            if (sstr_i >= sstr_len) {
-                sstr_len *= 2;
-                substring = realloc (substring, sstr_len);
-            }
-        }
+        else
+            substring = appens (substring, &sstr_i, &sstr_len, c);
     }
     if (i == end-1)
         offset = 0;
-    exp.len = l;
 
-    //printf ("args: ");
+    //printf ("%i args: ", data_i);
     //for (int n = 0; n < data_i; ++n)
-    //    print_data (exp.data[n], ' ');
+    //    print_data (exp[n], ' ');
     putchar ('\n');
 
     free (substring);
 
-    return eval (exp);
+    return eval (exp, explen);
 }
 
 /* eval: evaluate an s-expression */
-Data eval (S_Exp exp) {
+Data eval (Data *exp, int len) {
 
     Data rval = DAT_ERROR;
-    int num_args = FUNC_TABLE.func[exp.data[0].value.func].argc;
+    int num_args = 0;
+    char do_call = 1;
 
-    if (exp.len == 1)
-        rval = exp.data[0];
-    else if (exp.len <= 0) {
-        printf ("invalid arg count %i\n");
+    if (len == 1) {
+        rval = exp[0];
+        do_call = 0;
+    }
+    else if (len <= 0) {
+        printf ("invalid arg count %i\n", len);
+        do_call = 0;
     }
     // error if first value is not a function
-    else if (exp.data[0].type != T_FUNC) {
+    else if (exp[0].type != T_FUNC) {
         printf ("Error: object ");
-        print_data (exp.data[0], 0);
-        puts (" is not a function!");
-    }
-    // check for proper arg count
-    else if (num_args != 0 && exp.len > 0 && exp.len-1 > num_args) {
-        printf ("Error: invalid no. of arguments - takes %i, given %i\n",
-            num_args, exp.len);
-    }
-    else {
-        //printf ("Calling %s\n",
-        //    FUNC_TABLE.func[exp.data[0].value.func].name);
-        rval = call (exp.data[0].value.func, exp.len, exp.data+1);
+        print_data (exp[0], ' ');
+        puts ("is not a function!");
+        do_call = 0;
     }
 
-    free (exp.data);
+    // get arg count
+    num_args = exp[0].value.func.argc;
+
+    // check for proper arg count
+    if (num_args != 0 && len > 0 && len-1 > num_args) {
+        error ("Error: invalid no. of arguments - takes %i,"
+               "given %i\n", num_args, len);
+    }
+    else if (do_call)
+        rval = call (exp[0].value.func, len, exp+1);
+
+    free (exp);
 
     return rval;
 
 }
 
 /* call: calls a function */
-Data call (unsigned long func, unsigned int argc, Data *args) {
+Data call (struct func func, unsigned int argc, Data *args) {
 
-    char *base = FUNC_TABLE.func[func].base;
+    char *base = func.base;
 
     double (*apply)(double, double) = NULL;
 
@@ -177,13 +192,14 @@ Data call (unsigned long func, unsigned int argc, Data *args) {
         apply = p_div;
     else if (!strcmp (base, "P_DEF")) {
         if (args[0].type == T_STRING) {
-            return (Data){ T_VARIABLE, { .vari=add_symbol_v (&VAR_TABLE,
-                args[0].value.str, args[1]) } };
+            return (Data){ T_VARIABLE, {
+                .vari=add_symbol_v (&VAR_TABLE,
+                    args[0].value.str, args[1]) } };
         }
         else {
             printf ("Error: call - arg1 (");
             print_data (args[0], 0);
-            puts (") is not a string!");
+            puts (") is not a name!");
             return DAT_ERROR;
         }
     }
@@ -213,7 +229,7 @@ Data call (unsigned long func, unsigned int argc, Data *args) {
                 case T_FLOAT:
                     val = dat.value.fval;
                 default:
-                    printf ("Error: call - arg#%i invalid operand"
+                    error ("Error: call - arg#%i invalid operand"
                     " for %s : ", i+1, base+2);
                     print_data (dat, '\n');
                     return DAT_ERROR;
@@ -221,7 +237,7 @@ Data call (unsigned long func, unsigned int argc, Data *args) {
                 }
                 rval = apply (rval, val); }
             default:
-                printf ("Error: arg #%i - invalid operand for %s : ",
+                error ("Error: arg #%i - invalid operand for %s : ",
                     i+1, base+2);
                 print_data (args[i], '\n');
                 return DAT_ERROR;
@@ -235,15 +251,58 @@ Data call (unsigned long func, unsigned int argc, Data *args) {
     }
 
     // create a string
-    char *fcall = calloc (1, FUNC_TABLE.func[func].baselen+1);
-    memcpy (fcall, FUNC_TABLE.func[func].base,
-        FUNC_TABLE.func[func].baselen);
-    puts (fcall);
+    puts (base);
 
-    Data rval = expressionize (fcall, strlen (fcall));
-
-    free (fcall);
+    Data rval = expressionize (base, strlen (base));
 
     return rval;
+}
+
+/* append: append data to list */
+Data *append (Data *list, int *index, int *len, Data dat) {
+
+    if (!list) {
+        error ("append - %p is NULL!\n", list);
+        return 0;
+    }
+
+    Data *temp = NULL;
+    while (*index > *len) {
+        (*len) *= 2;
+        temp = realloc (list, sizeof(Data) * *len);
+        while (!temp)
+            fatal ("append - failed realloc!\n");
+    }
+    if (temp) {
+        list = temp;
+        free (temp);
+    }
+    list[(*index)++] = dat;
+
+    return list;
+}
+
+/* appens: append char to string */
+char *appens (char *str, int *index, int *len, char c) {
+
+    if (!str) {
+        error ("appens - %p is NULL!\n", str);
+        return 0;
+    }
+
+    char *temp = NULL;
+    while (*index > *len) {
+        (*len) *= 2;
+        temp = realloc (str, sizeof(char) * *len);
+        while (!temp)
+            fatal ("appens - failed realloc!\n");
+    }
+    if (temp) {
+        str = temp;
+        free (temp);
+    }
+    str[(*index)++] = c;
+
+    return str;
 }
 
