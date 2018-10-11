@@ -1,20 +1,25 @@
 
-
 CC=gcc
-NAMES=functable interpret primitive
-SNAMS=$(addprefix src/, $(NAMES))
-HEADRS=src/data.h $(addsuffix .h, $(SNAMS))
-SRCS=$(addsuffix .c, $(SNAMS))
-OBJS=$(addsuffix .o, $(SNAMS))
-OBJC=$(addprefix src/obj/, $(addsuffix .o, $(NAMES)))
+CFLAGS=-Wall -Wextra -g
+LDFLAGS=-lreadline
+
+SRC=$(wildcard src/*.c)
+OBJ=$(subst .c,.o,$(addprefix src/obj/, $(notdir $(SRC))))
+DEP=$(subst obj,dep,$(subst .o,.d,$(OBJ)))
+
+interpret : $(OBJ)
+	$(CC) $^ $(LDFLAGS) -o $@
+
+-include $(DEP)
+
+src/obj/%.o : src/%.c
+	$(CC) $< -c -o $@ $(CFLAGS)
+
+src/dep/%.d : src/%.c
+	$(CC) $< -MM -MT $(subst dep,obj,$(subst .d,.o,$@)) >$@
 
 
-interpret : src/main.c $(OBJC)
-	$(CC) -g src/main.c $(OBJC) -o interpret
-
-$(OBJC) : $(SRCS) $(HEADRS)
-	$(CC) -g -c $(SRCS)
-	mv $(addsuffix .o, $(NAMES)) src/obj
-
+.PHONY: clean
 clean :
-	rm interpret $(OBJC)
+	rm -f interpret src/obj/* src/dep/*
+

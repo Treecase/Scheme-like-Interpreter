@@ -1,4 +1,3 @@
 interpret
 src/obj/*
-src/a.out
-version.txt
+src/dep/*

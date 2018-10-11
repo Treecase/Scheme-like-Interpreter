@@ -1,0 +1,65 @@
+/*
+ * LISP Errors
+ *
+ */
+
+#include "error.h"
+#include "data.h"
+
+#include <stdlib.h> /* malloc */
+#include <stdio.h>  /* vsnprintf */
+#include <stdarg.h> /* va_list, etc. */
+
+
+
+/* error messages associated with specific error codes */
+char const *const errmsg[] =
+{   [EC_UNBOUND_VAR] =  "Unbound Variable",
+    [EC_BAD_SYNTAX]  =  "Syntax Error",
+    [EC_INVALID_ARG] =  "Invalid Argument",
+    [EC_GENERAL]     =  "Generic Error",
+};
+
+
+
+/* _mkerr_va: mkerr that accepts a va_list */
+static Error _mkerr_va (Errcode t, char *flavour, va_list ap)
+{
+    int len = 0;
+    char *buf = NULL;
+
+    len = vsnprintf (NULL, 0, flavour, ap);
+    buf = malloc (len);
+    vsnprintf (buf, len, flavour, ap);
+
+    return (Error){ .errcode=t,
+                    .flavour=flavour
+                  };
+}
+
+/* errmsg: get the error message associated with an error code */
+char const *err_msg (Error e)
+{   return errmsg[e.errcode];
+}
+
+/* mkerr: return a new error of type t */
+Error mkerr (Errcode t, char *flavour, ...)
+{   va_list ap;
+    va_start (ap, flavour);
+    Error e = _mkerr_va (t, flavour, ap);
+    va_end (ap);
+    return e;
+}
+
+/* mkerr_var: create an error Var with type t */
+Var mkerr_var (Errcode t, char *flavour, ...)
+{
+    va_list ap;
+    va_start (ap, flavour);
+    Var r = { .type=VAR_ERROR,
+              .err =_mkerr_va (t, flavour, ap)
+            };
+    va_end (ap);
+    return r;
+}
+

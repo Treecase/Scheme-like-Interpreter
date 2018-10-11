@@ -1,56 +1,86 @@
 /*
- * Data handling stuff
+ * Data defs
  *
  */
 
+#ifndef __DATA_H
+#define __DATA_H
 
-#ifndef _DATA_H
-#define _DATA_H
+#include "string.h"
+#include "error.h"
+#include "token.h"
+#include "environment.h"
+
+#include <stddef.h>
+#include <stdbool.h>
 
 
+/* TODO: make this configurable */
+#define DEBUG_FILE  stdout
 
-// error logging
-#define error(...)  fprintf (stderr, "Error: ");\
-                    fprintf (stderr, __VA_ARGS__)
-#define fatal(...)  error (__VA_ARGS__);\
-                    exit (-1)
+#define fatal(format, ...)  ({  fprintf (stderr, format "\n", ##__VA_ARGS__); exit (EXIT_FAILURE);  })
+#define error(format, ...)  ({  fprintf (stderr, format "\n", ##__VA_ARGS__);   })
+
+#ifdef _DEBUG_BUILD
+#define debug(format, ...)  ({  fprintf (DEBUG_FILE, format "\n", ##__VA_ARGS__);   })
+#else
+#define debug(format, ...)
+#endif
 
 
-/* function datatype */
-struct func {
-    char          *name;
-    unsigned long argc;
-    char          *base;
-    int           baselen;
-};
+/* List:
+ *  List of Vars
+ */
+typedef struct List
+{   size_t      len;
+    struct Var *data;
+} List;
 
-/* generic data struct */
-typedef struct {
-    unsigned char type;
-    union {
-        float         fval;
-        int           ival;
-        char          *str;
-        struct func   func;
-        unsigned long vari; // variable table offset
-    } value;
-} Data;
 
-// datatypes
-enum data_types {
-    T_FUNC,
-    T_VARIABLE,
-    T_INTEGER,
-    T_FLOAT,
-    T_STRING,
-    T_ERROR = (unsigned char)-1,
-};
+/* LISPFunction:
+ *  A non-builtin function -- essentially
+ *  just a saved token list
+ */
+typedef struct LISPFunction
+{   Token      *body;
+    Environment env;
+} LISPFunction;
 
-/* s-expression struct */
-typedef struct {
-    Data *data;
-    int  len;
-} S_Exp;
+
+/* BuiltIn:
+ *  Builtins are is basically just
+ *  C function pointers
+ */
+typedef struct BuiltIn
+{   /* pointer to a function taking an int
+     * and a const pointer to a const Var */
+    struct Var (*fn)(size_t argc, struct Var const *const argv);
+} BuiltIn;
+
+
+/* Function:
+ *  A Function can be either a
+ *  LISPFunction or a BuiltIn
+ *
+ *  NOTE: named _Function because
+ *  GNU Readline has a _PUBLIC_
+ *  typedef for Function already
+ *  (... v_v)
+ */
+typedef struct _Function
+{
+    union
+    {   LISPFunction fn;
+        BuiltIn      builtin;
+    };
+    enum
+    {   FN_LISPFN,
+        FN_BUILTIN,
+    } type;
+} _Function;
+
+
+#include "var.h"
 
 
 #endif
