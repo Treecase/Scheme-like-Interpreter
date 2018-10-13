@@ -13,6 +13,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 
 /* TODO: make this configurable */
@@ -42,8 +43,8 @@ typedef struct List
  *  just a saved token list
  */
 typedef struct LISPFunction
-{   Token      *body;
-    Environment env;
+{   Token       *body;
+    Environment *env;
 } LISPFunction;
 
 
@@ -54,7 +55,7 @@ typedef struct LISPFunction
 typedef struct BuiltIn
 {   /* pointer to a function taking an int
      * and a const pointer to a const Var */
-    struct Var (*fn)(size_t argc, struct Var const *const argv);
+    struct Var (*fn)(size_t, struct Var const *const, Environment *);
 } BuiltIn;
 
 
@@ -68,8 +69,7 @@ typedef struct BuiltIn
  *  (... v_v)
  */
 typedef struct _Function
-{
-    union
+{   union
     {   LISPFunction fn;
         BuiltIn      builtin;
     };

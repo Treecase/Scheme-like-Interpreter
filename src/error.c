@@ -29,17 +29,31 @@ static Error _mkerr_va (Errcode t, char *flavour, va_list ap)
     char *buf = NULL;
 
     len = vsnprintf (NULL, 0, flavour, ap);
-    buf = malloc (len);
-    vsnprintf (buf, len, flavour, ap);
+    if (len < 0)
+    {   fatal ("vsnprintf failed!");
+    }
+    else
+    {
+        len += 1;
+        buf = malloc (len);
+        vsnprintf (buf, len, flavour, ap);
 
-    return (Error){ .errcode=t,
-                    .flavour=flavour
-                  };
+        return (Error){ .errcode=t,
+                        .flavour=buf
+                      };
+    }
 }
 
 /* errmsg: get the error message associated with an error code */
 char const *err_msg (Error e)
-{   return errmsg[e.errcode];
+{
+    if (e.errcode > _EC_COUNT || e.errcode < 0)
+    {   fatal ("Invalid error code %i", e.errcode);
+    }
+    else
+    {   return errmsg[e.errcode];
+        return NULL;
+    }
 }
 
 /* mkerr: return a new error of type t */

@@ -3,8 +3,12 @@
  *
  * ie + - * /, etc.
  *
+ *
+ * NOTE: MKBUILTIN returns `Var _builtin_[argument] (size_t argc, Var *argv, Environment env)
+ *
  */
 
+#define _NO_UNDEF_MKDEFINE
 #include "builtins.h"
 #include "data.h"
 
@@ -13,7 +17,7 @@
 
 
 /* TODO: support string concatenation? */
-Var _builtin_add (size_t argc, Var const *const argv)
+MKBUILTIN(add)
 {
     Var result = { .type=VAR_NUMBER,
                    .number=0
@@ -26,7 +30,9 @@ Var _builtin_add (size_t argc, Var const *const argv)
         {   result.number = argv[0].number;
         }
         else
-        {   return mkerr_var (EC_INVALID_ARG, "Invalid type. %v is not a number", argv[0]);
+        {   return mkerr_var (EC_INVALID_ARG,
+                              "Invalid type. %v is not a number",
+                              &argv[0]);
         }
 
         /* skip the first number, it's already added to the sum */
@@ -36,7 +42,9 @@ Var _builtin_add (size_t argc, Var const *const argv)
             {   result.number += argv[i].number;
             }
             else
-            {   return mkerr_var (EC_INVALID_ARG, "Invalid type: %v is not a number", argv[i]);
+            {   return mkerr_var (EC_INVALID_ARG,
+                                  "Invalid type: %v is not a number",
+                                  &argv[i]);
             }
         }
         return result;
@@ -44,12 +52,13 @@ Var _builtin_add (size_t argc, Var const *const argv)
     else
     {   return mkerr_var (EC_BAD_SYNTAX, "Not enough args");
     }
-
-    return mkerr_var (EC_BAD_SYNTAX, "in add");
+    return mkerr_var (EC_GENERAL,
+                      "Something bad happened in `%s'",
+                      __func__);
 }
 
 /* we can skimp out on this function because  A - B = A + (-B) */
-Var _builtin_sub (size_t argc, Var const *const argv)
+MKBUILTIN(sub)
 {
     if (argc > 0)
     {
@@ -67,7 +76,7 @@ Var _builtin_sub (size_t argc, Var const *const argv)
                 new_argv[i].number *= -1;
             }
 
-            return _builtin_add (argc, new_argv);
+            return _builtin_add (argc, new_argv, env);
         }
         else
         {   if (argv[0].type == VAR_NUMBER)
@@ -76,16 +85,21 @@ Var _builtin_sub (size_t argc, Var const *const argv)
                             };
             }
             else
-            {   return mkerr_var (EC_INVALID_ARG, "Invalid type: %v is not a number", argv[0]);
+            {   return mkerr_var (EC_INVALID_ARG,
+                                  "Invalid type: %v is not a number",
+                                  &argv[0]);
             }
         }
     }
     else
     {   return mkerr_var (EC_INVALID_ARG, "Not enough args");
     }
+    return mkerr_var (EC_GENERAL,
+                      "Something bad happened in `%s'",
+                      __func__);
 }
 
-Var _builtin_mul (size_t argc, Var const *const argv)
+MKBUILTIN(mul)
 {
     Var result = { .type=VAR_NUMBER,
                    .number=0
@@ -97,7 +111,9 @@ Var _builtin_mul (size_t argc, Var const *const argv)
         {   result.number = argv[0].number;
         }
         else
-        {   return mkerr_var (EC_INVALID_ARG, "Invalid type. %v is not a Number", argv[0]);
+        {   return mkerr_var (EC_INVALID_ARG,
+                              "Invalid type. %v is not a Number",
+                              &argv[0]);
         }
 
         for (size_t i = 1; i < argc; ++i)
@@ -107,17 +123,20 @@ Var _builtin_mul (size_t argc, Var const *const argv)
                 result.number *= argv[i].number;
             }
             else
-            {   return mkerr_var (EC_INVALID_ARG, "Invalid type. %v is not a Number", argv[i]);
+            {   return mkerr_var (EC_INVALID_ARG,
+                                  "Invalid type. %v is not a Number",
+                                  &argv[i]);
             }
         }
         return result;
     }
-
-    return mkerr_var (EC_BAD_SYNTAX, "in mul");
+    return mkerr_var (EC_GENERAL,
+                      "Something bad happened in `%s'",
+                      __func__);
 }
 
 /* we can skimp out on this one because  A / B = A * 1/B */
-Var _builtin_div (size_t argc, Var const *const argv)
+MKBUILTIN(div)
 {
     if (argc > 0)
     {
@@ -129,10 +148,42 @@ Var _builtin_div (size_t argc, Var const *const argv)
             new_argv[i] = argv[i];
             new_argv[i].number = 1 / new_argv[i].number;
         }
-        return _builtin_mul (argc, new_argv);
+        return _builtin_mul (argc, new_argv, env);
     }
     else
     {   return mkerr_var (EC_INVALID_ARG, "Not enough args");
     }
+    return mkerr_var (EC_GENERAL, "Something bad happened in `%s'",
+                      __func__);
 }
+
+
+MKBUILTIN(define)
+{
+    if (argc == 2)
+    {
+        if (argv[0].type == VAR_SYMBOL)
+        {   add_id (env, argv[0].sym, argv[1]);
+            return argv[0];
+        }
+        else
+        {   return mkerr_var (EC_INVALID_ARG,
+                              "%v is not an identifier",
+                              &argv[0]);
+        }
+    }
+    else
+    {   return mkerr_var (EC_INVALID_ARG,
+                          "define takes exactly 2 arguments, got %zi",
+                          argc);
+    }
+    return mkerr_var (EC_GENERAL,
+                      "Something bad happened in `%s'",
+                      __func__);
+}
+
+
+
+#undef MKBUILTIN
+#undef _GETBUILTINNAME
 

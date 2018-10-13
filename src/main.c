@@ -61,7 +61,7 @@ int main (int argc, char *argv[]) {
         if (tokens != NULL)
         {
             /* Eval: evaluate the tokens, stuffing
-             * the results of each into a list */
+             *       the results into a list */
             Var v = (Var){ .list=(List){ .len=0,
                                          .data=NULL },
                            .type=VAR_LIST };
@@ -69,7 +69,7 @@ int main (int argc, char *argv[]) {
             {
                 v.list.data = realloc (v.list.data,
                                        sizeof(*v.list.data)*(i+1));
-                v.list.data[i] = eval (tokens[i], global_env);
+                v.list.data[i] = eval (tokens[i], &global_env);
                 v.list.len++;
             }
 

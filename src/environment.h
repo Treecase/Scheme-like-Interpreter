@@ -19,18 +19,17 @@ typedef struct Environment
     Identifier *names;
     struct Var *values;
 
-    struct Environment const *parent;
+    struct Environment *parent;
 } Environment;
 
 
 
-struct Var id_lookup (Environment e, Identifier id);
-
 Environment get_default_environment(void);
 
-void add_id (Environment e, Identifier id, struct Var v);
-void rm_id (Environment e, Identifier id);
-void change_value (Environment e, Identifier id, struct Var new);
+struct Var id_lookup (Environment const *const e, Identifier id);
+
+void add_id (Environment *e, Identifier id, struct Var v);
+void change_value (Environment *e, Identifier id, struct Var new);
 
 void free_env (Environment e);
 

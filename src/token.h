@@ -9,14 +9,14 @@
 #include "string.h"
 
 
+/* TODO: maybe merge Token and Var? */
 /* Token:
  *  A token can be either an atom (such as a string or number)
  *  or a sub-expression (as in `(* (+ 3 2) 5)')
  */
 typedef struct Token
 {   union
-    {
-        double        number;
+    {   double        number;
         String        str;
         Identifier    id;
         struct Token *subexpr;

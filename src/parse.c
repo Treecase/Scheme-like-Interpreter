@@ -21,7 +21,7 @@
  *               given `"Hello World"', returns the String "Hello World". */
 Token parse_lexeme (String in)
 {
-    Token out;
+    Token out = { .type=TOK_NUMBER, .number=-1 };
 
     bool failed = false;
 
@@ -34,12 +34,13 @@ Token parse_lexeme (String in)
         for (i = 1; i < in.len; ++i)
         {   if (in.chars[i] == '"')
             {   found_endquote = true;
+                i -= 1;
                 break;
             }
         }
 
         if (found_endquote)
-        {   out.type = TOK_STRING;
+        {   out.type      = TOK_STRING;
             out.str.chars = strndup (in.chars+1, i);
             out.str.len   = i;
             out.str.size  = i+1;
@@ -55,7 +56,7 @@ Token parse_lexeme (String in)
     else if (isdigit (in.chars[0]) || in.chars[0] == '+' || in.chars[0] == '-' || in.chars[0] == '.')
     {
         char *end;
-        out.type = TOK_NUMBER;
+        out.type   = TOK_NUMBER;
         out.number = strtod (in.chars, &end);
 
         /* strtod stores a pointer to the last character used in conversion in `end'.
@@ -75,7 +76,7 @@ Token parse_lexeme (String in)
      * a Number, and it isn't a String, then it must be an Identifier!
      * (or a malformed Number/String, but we can't really detect that here) */
     if (failed)
-    {   out.type = TOK_IDENTIFIER;
+    {   out.type     = TOK_IDENTIFIER;
         out.id.chars = strndup (in.chars, in.len);
         out.id.len   = in.len;
         out.id.size  = in.size;

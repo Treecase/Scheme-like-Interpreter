@@ -29,6 +29,7 @@ typedef String Identifier;
 
 
 String mkstring (char const *const str);
+String stringdup (String str);
 void free_string (String s);
 int stringcmp (String a, String b);
 

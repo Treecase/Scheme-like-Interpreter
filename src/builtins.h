@@ -11,11 +11,22 @@
 #include "data.h"
 
 
-Var _builtin_add (size_t argc, Var const *const argv);
-Var _builtin_sub (size_t argc, Var const *const argv);
-Var _builtin_mul (size_t argc, Var const *const argv);
-Var _builtin_div (size_t argc, Var const *const argv);
+#define _GETBUILTINNAME(NAME)   _builtin_ ## NAME
+#define MKBUILTIN(NAME)         Var _GETBUILTINNAME(NAME) (size_t argc, Var const *const argv, Environment *env)
 
 
+
+MKBUILTIN(add);
+MKBUILTIN(sub);
+MKBUILTIN(mul);
+MKBUILTIN(div);
+
+MKBUILTIN(define);
+
+
+#ifndef _NO_UNDEF_MKDEFINE
+#undef MKBUILTIN
+#undef _GETBUILTINNAME
+#endif
 #endif
 

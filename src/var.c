@@ -18,6 +18,9 @@ void free_var (Var v)
     case VAR_STRING:
         free_string (v.str);
         break;
+    case VAR_SYMBOL:
+        free_string (v.sym);
+        break;
 
     case VAR_LIST:
         for (size_t i = 0; i < v.list.len; ++i)
@@ -32,8 +35,11 @@ void free_var (Var v)
         }
         break;
 
-    /* these don't alloc memory */
     case VAR_ERROR:
+        free (v.err.flavour);
+        break;
+
+    /* these don't alloc memory */
     case VAR_NUMBER:
         break;
     }

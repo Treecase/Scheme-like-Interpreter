@@ -10,12 +10,12 @@
 #include <string.h>
 
 
-Var call (_Function fn, Token const *const args, Environment hostenv);
+Var call (_Function fn, Token const *const args, Environment *hostenv);
 
 
 
 /* eval: get the value of a token */
-Var eval (Token t, Environment e)
+Var eval (Token t, Environment *e)
 {
     switch (t.type)
     {
@@ -32,8 +32,17 @@ Var eval (Token t, Environment e)
         break;
 
     case TOK_IDENTIFIER:
-        return id_lookup (e, t.id);
-        break;
+      { Var val = id_lookup (e, t.id);
+        if (val.type == VAR_ERROR && val.err.errcode == EC_UNBOUND_VAR)
+        {   free_var (val);
+            return (Var){ .type=VAR_SYMBOL,
+                          .sym=stringdup (t.id)
+                        };
+        }
+        else
+        {   return val;
+        }
+      } break;
 
     case TOK_EXPR:
       {
@@ -41,7 +50,7 @@ Var eval (Token t, Environment e)
         {
             Var fn = eval (t.subexpr[0], e);
             if (fn.type == VAR_FUNCTION)
-            {   return call (fn.fn, t.subexpr + 1, e);
+            {   return call (fn.fn, t.subexpr+1, e);
             }
             else
             {   return mkerr_var (EC_BAD_SYNTAX, "1st list elem is not a function");
@@ -77,7 +86,7 @@ Var eval (Token t, Environment e)
 /* call: evaluate a function */
 Var call (_Function fn,
           Token const *const args,
-          Environment hostenv)
+          Environment *hostenv)
 {
     /* When a LISPFunction is called, we must pass the arguments into
      * the function as variables in it's environment. To do this,
@@ -94,7 +103,6 @@ Var call (_Function fn,
      * function to interpret that as it will.
      */
 
-
     /* user-defined functions */
     if (fn.type == FN_LISPFN)
     {
@@ -103,12 +111,12 @@ Var call (_Function fn,
         /* pass the args */
         for (size_t i = 0; args[i].type != TOK_ENDEXPR; ++i)
         {
-            Identifier var_name = func.env.names[i];
+            Identifier var_name = func.env->names[i];
 
             /* set `var_name' to reference the value of arg[i] */
             change_value (func.env, var_name, eval (args[i], hostenv));
         }
-        func.env.parent = &hostenv;
+        func.env->parent = hostenv;
 
         /* apply the function body to the args */
         List l = { .len=0,
@@ -135,15 +143,16 @@ Var call (_Function fn,
         {   argv[i] = eval (args[i], hostenv);
         }
 
+        Var result = { 0 };
         if (fn.builtin.fn)
-        {   Var result = fn.builtin.fn (argc, argv);
-            free (argv);
-            return result;
+        {   result = fn.builtin.fn (argc, argv, hostenv);
         }
         else
-        {   free (argv);
-            return mkerr_var (EC_BAD_SYNTAX, "Operation Not Implemented");
+        {   result = mkerr_var (EC_BAD_SYNTAX,
+                              "Operation Not Implemented");
         }
+        free (argv);
+        return result;
     }
 
     return mkerr_var (EC_BAD_SYNTAX, "in `call'");

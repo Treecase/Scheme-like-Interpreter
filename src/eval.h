@@ -9,7 +9,7 @@
 #include "data.h"
 
 
-Var eval (Token t, Environment e);
+Var eval (Token t, Environment *e);
 
 
 #endif

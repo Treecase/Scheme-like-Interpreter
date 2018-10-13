@@ -15,6 +15,7 @@ typedef enum Errcode
     EC_BAD_SYNTAX,
     EC_INVALID_ARG,
     EC_GENERAL,
+    _EC_COUNT,
 } Errcode;
 
 

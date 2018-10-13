@@ -12,10 +12,10 @@
 
 
 /* id_index: return the index of id */
-size_t id_index (Environment e, Identifier id)
+size_t id_index (Environment const *const e, Identifier id)
 {
-    for (size_t i = 0; i < e.len; ++i)
-    {   if (stringcmp (id, e.names[i]) == 0)
+    for (size_t i = 0; i < e->len; ++i)
+    {   if (stringcmp (id, e->names[i]) == 0)
         {   return i;
         }
     }
@@ -24,17 +24,15 @@ size_t id_index (Environment e, Identifier id)
 
 
 /* id_lookup: return the value associated with an identifier */
-Var id_lookup (Environment e, Identifier id)
+Var id_lookup (Environment const *const e, Identifier id)
 {
     size_t i = id_index (e, id);
 
     if (i != (size_t)-1)
-    {
-        return e.values[i];
+    {   return e->values[i];
     }
-    else if (e.parent != NULL)
-    {
-        return id_lookup (*e.parent, id);
+    else if (e->parent != NULL)
+    {   return id_lookup (e->parent, id);
     }
     else
     {   return mkerr_var (EC_UNBOUND_VAR, "");
@@ -43,32 +41,40 @@ Var id_lookup (Environment e, Identifier id)
 
 /* add_id: add an id to the environment
  * (eg for defining a new variable) */
-void add_id (Environment e, Identifier id, Var v)
+void add_id (Environment *e, Identifier id, Var v)
 {
-    e.names  = realloc (e.names , sizeof(*e.names ) * (e.len+1));
-    e.values = realloc (e.values, sizeof(*e.values) * (e.len+1));
+    size_t i = id_index (e, id);
 
-    e.names [e.len] = id;
-    e.values[e.len] = v;
+    if (i == (size_t)-1)
+    {   e->names  = realloc (e->names , sizeof(*e->names ) * (e->len+1));
+        e->values = realloc (e->values, sizeof(*e->values) * (e->len+1));
 
-    e.len++;
+        e->names [e->len] = stringdup (id);
+        e->values[e->len] = v;
+
+        e->len++;
+    }
+    else
+    {   e->values[i] = v;
+    }
 }
 
 /* change_value: change the value associated with id
  * (eg for variable assignment) */
-void change_value (Environment e, Identifier id, Var new)
+void change_value (Environment *e, Identifier id, Var new)
 {
     size_t i = id_index (e, id);
 
     if (i != (size_t)-1)
-    {   e.values[i] = new;
+    {   e->values[i] = new;
     }
-    else if (e.parent != NULL)
-    {
-        change_value (*e.parent, id, new);
+    else if (e->parent != NULL)
+    {   /* id not found in this env, check parent env */
+        change_value (e->parent, id, new);
     }
     else
     {   /* TODO: variable not found error */
+        error ("Variable '%s' not found", id.chars);
     }
 }
 
@@ -80,13 +86,15 @@ char const *const builtin_names[] =
     "-",
     "*",
     "/",
+    "define",
  };
 
-Var (*builtin_funcptrs[])(size_t argc, Var const *const argv) = 
+Var (*builtin_funcptrs[])(size_t, Var const *const, Environment *) = 
  {  _builtin_add,
     _builtin_sub,
     _builtin_mul,
     _builtin_div,
+    _builtin_define,
  };
 
 

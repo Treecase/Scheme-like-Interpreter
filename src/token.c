@@ -66,7 +66,7 @@ Token *tokenize (String in, size_t *chars_read)
                 {   /* an atom ends once we hit whitespace or a close bracket */
                     String lexeme = read_until (in, &i, LISP_SEPARATORS);
                     if (lexeme.len > 0)
-                    {   debug ("got '%s'", lexeme.chars);
+                    {   //debug ("got '%s'", lexeme.chars);
                         tokens[num_tokens] = parse_lexeme (lexeme);
                     }
                     free_string (lexeme);

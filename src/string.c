@@ -22,6 +22,11 @@ String mkstring (char const *const str)
     return r;
 }
 
+/* stringdup: duplicate a string */
+String stringdup (String s)
+{   return mkstring (s.chars);
+}
+
 /* free_string:  */
 void free_string (String s)
 {   free (s.chars);
