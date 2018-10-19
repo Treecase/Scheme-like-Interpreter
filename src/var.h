@@ -31,6 +31,7 @@ typedef struct Var
 
 
 
+Var vardup (Var v);
 void free_var (Var v);
 
 

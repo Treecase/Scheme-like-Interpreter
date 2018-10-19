@@ -24,14 +24,14 @@ typedef struct Environment
 
 
 
-Environment get_default_environment(void);
+Environment *get_default_environment(void);
 
-struct Var id_lookup (Environment const *const e, Identifier id);
+struct Var id_lookup (Environment const *e, Identifier id);
 
 void add_id (Environment *e, Identifier id, struct Var v);
 void change_value (Environment *e, Identifier id, struct Var new);
 
-void free_env (Environment e);
+void free_env (Environment *e);
 
 
 #endif

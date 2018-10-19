@@ -12,7 +12,7 @@
 
 
 /* id_index: return the index of id */
-size_t id_index (Environment const *const e, Identifier id)
+size_t id_index (Environment const *e, Identifier id)
 {
     for (size_t i = 0; i < e->len; ++i)
     {   if (stringcmp (id, e->names[i]) == 0)
@@ -24,7 +24,7 @@ size_t id_index (Environment const *const e, Identifier id)
 
 
 /* id_lookup: return the value associated with an identifier */
-Var id_lookup (Environment const *const e, Identifier id)
+Var id_lookup (Environment const *e, Identifier id)
 {
     size_t i = id_index (e, id);
 
@@ -80,63 +80,62 @@ void change_value (Environment *e, Identifier id, Var new)
 
 
 
-#define LEN(arr)    (sizeof(arr)/sizeof(*arr))
 char const *const builtin_names[] =
  {  "+",
     "-",
     "*",
     "/",
     "define",
+    "lambda",
  };
 
-Var (*builtin_funcptrs[])(size_t, Var const *const, Environment *) = 
+Var (*builtin_funcptrs[])(List, Environment *) =
  {  _builtin_add,
     _builtin_sub,
     _builtin_mul,
     _builtin_div,
     _builtin_define,
+    _builtin_lambda,
  };
 
+#define LEN(arr)    (sizeof(arr)/sizeof(*arr))
 
 /* get_default_environment: get an environment initialized
  *                          with builtins and global vars */
-Environment get_default_environment(void)
+Environment *get_default_environment(void)
 {
-    Environment env;
+    Environment *env = calloc (1, sizeof(*env));
 
-    env.parent = NULL;
-    env.len    = LEN(builtin_names);
+    env->parent = NULL;
+    env->len    = LEN(builtin_names);
 
-    env.names  = calloc (env.len, sizeof(*env.names ));
-    env.values = calloc (env.len, sizeof(*env.values));
+    env->names  = calloc (env->len, sizeof(*env->names ));
+    env->values = calloc (env->len, sizeof(*env->values));
 
-    for (size_t i = 0; i < env.len; ++i)
+    for (size_t i = 0; i < env->len; ++i)
     {
-        env.names [i] = mkstring (builtin_names[i]);
-
-        BuiltIn  _bltin = { .fn=builtin_funcptrs[i]
-                          };
+        BuiltIn   _bltin = { .fn=builtin_funcptrs[i] };
         _Function _func  = { .type   =FN_BUILTIN,
-                            .builtin=_bltin
-                          };
+                             .builtin=_bltin
+                           };
 
-        env.values[i] = (Var){ .type=VAR_FUNCTION,
-                               .fn  =_func
-                             };
+        env->values[i] = (Var){ .type=VAR_FUNCTION,
+                                .fn  =_func
+                              };
+        env->names[i] = mkstring (builtin_names[i]);
     }
-
     return env;
 }
 
 /* free_env: free memory used by an Environment */
-void free_env (Environment e)
+void free_env (Environment *e)
 {
-    for (size_t i = 0; i < e.len; ++i)
-    {
-        free_string (e.names [i]);
-        free_var    (e.values[i]);
+    for (size_t i = 0; i < e->len; ++i)
+    {   free_string (e->names [i]);
+        free_var    (e->values[i]);
     }
-    free (e.names );
-    free (e.values);
+    free (e->names );
+    free (e->values);
+    free (e);
 }
 

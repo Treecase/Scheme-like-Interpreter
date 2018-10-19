@@ -1,3 +1,4 @@
 interpret
 src/obj/*
 src/dep/*
+Makefile

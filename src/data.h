@@ -43,7 +43,7 @@ typedef struct List
  *  just a saved token list
  */
 typedef struct LISPFunction
-{   Token       *body;
+{   List         body;
     Environment *env;
 } LISPFunction;
 
@@ -53,9 +53,7 @@ typedef struct LISPFunction
  *  C function pointers
  */
 typedef struct BuiltIn
-{   /* pointer to a function taking an int
-     * and a const pointer to a const Var */
-    struct Var (*fn)(size_t, struct Var const *const, Environment *);
+{   struct Var (*fn)(List, Environment *);
 } BuiltIn;
 
 
@@ -66,7 +64,7 @@ typedef struct BuiltIn
  *  NOTE: named _Function because
  *  GNU Readline has a _PUBLIC_
  *  typedef for Function already
- *  (... v_v)
+ *  ( v_v)
  */
 typedef struct _Function
 {   union

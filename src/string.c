@@ -30,14 +30,21 @@ String stringdup (String s)
 /* free_string:  */
 void free_string (String s)
 {   free (s.chars);
-    s.len  = 0;
-    s.size = 0;
 }
 
 /* stringcmp: compare two strings */
 int stringcmp (String a, String b)
-{   /* use the length of the shortest string */
-    size_t n = (a.len > b.len)? a.len : b.len;
-    return strncmp (a.chars, b.chars, n);
+{
+    if (a.chars != NULL && b.chars != NULL)
+    {   /* use the length of the shortest string */
+        size_t n = (a.len > b.len)? a.len : b.len;
+        return strncmp (a.chars, b.chars, n);
+    }
+    else
+    {   error ("%s failed -- string %s is NULL!",
+               __func__,
+               (a.chars == NULL)? "a" : "b");
+        return -1;
+    }
 }
 

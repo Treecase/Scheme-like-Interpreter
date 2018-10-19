@@ -12,7 +12,9 @@
 
 
 #define _GETBUILTINNAME(NAME)   _builtin_ ## NAME
-#define MKBUILTIN(NAME)         Var _GETBUILTINNAME(NAME) (size_t argc, Var const *const argv, Environment *env)
+#define MKBUILTIN(NAME)         Var _GETBUILTINNAME(NAME)\
+                                (List argv,\
+                                 Environment *env)
 
 
 
@@ -22,6 +24,8 @@ MKBUILTIN(mul);
 MKBUILTIN(div);
 
 MKBUILTIN(define);
+
+MKBUILTIN(lambda);
 
 
 #ifndef _NO_UNDEF_MKDEFINE

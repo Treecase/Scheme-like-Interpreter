@@ -1,0 +1,37 @@
+#!/bin/bash
+
+
+
+debug=false
+prefix=
+
+for arg in "$@"; do
+    case "$arg" in
+    --prefix=*)
+      prefix=`echo $arg | sed 's/--prefix=//'`;;
+    --debug)
+      debug=true;;
+    --no-debug)
+      debug=false;;
+
+    --help|*)
+      echo 'usage: ./configure [OPTIONS]'
+      echo '  --prefix=<path>: installation prefix'
+      echo '  --debug: enable debug logging and debug symbols'
+      echo '  --no-debug: disable debug logging and debug symbols'
+      exit 0;;
+    esac
+done
+
+if [ -f Makefile ]; then
+    rm -f Makefile
+fi
+
+echo 'Generating Makefile...'
+echo "PREFIX=$prefix" >>Makefile
+
+echo "DEBUG_BUILD=$debug" >>Makefile
+
+cat Makefile.in >>Makefile
+echo 'Done.'
+

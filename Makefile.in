@@ -1,7 +1,11 @@
 
 CC=gcc
-CFLAGS=-Wall -Wextra -g
 LDFLAGS=-lreadline
+
+CFLAGS=-Wall -Wextra
+ifeq ($(DEBUG_BUILD), true)
+ CFLAGS += -g -D _DEBUG_BUILD
+endif
 
 SRC=$(wildcard src/*.c)
 OBJ=$(subst .c,.o,$(addprefix src/obj/, $(notdir $(SRC))))
@@ -18,6 +22,16 @@ src/obj/%.o : src/%.c
 src/dep/%.d : src/%.c
 	$(CC) $< -MM -MT $(subst dep,obj,$(subst .d,.o,$@)) >$@
 
+
+
+.PHONY: install
+install : interpret
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp $< $(DESTDIR)$(PREFIX)/bin/interpret
+
+.PHONY: uninstall
+uninstall :
+	rm -f $(DESTDIR)$(PREFIX)/bin/interpret
 
 .PHONY: clean
 clean :

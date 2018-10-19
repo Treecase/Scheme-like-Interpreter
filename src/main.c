@@ -6,10 +6,10 @@
  * loops back to Read.
  *
  */
+/* TODO: add a garbage collector instead of allocing everything and just freeing at the end */
 
 #include "string.h"
 #include "token.h"
-#include "parse.h"
 #include "eval.h"
 #include "print.h"
 
@@ -24,10 +24,10 @@
 
 
 char const *const PROMPT = "> ";
-Environment global_env = { 0 };
+Environment *global_env = { 0 };
 
 
-String getinput (char const *const prompt);
+String getinput (char const *prompt);
 void init_readline(void);
 char **lisp_command_complete (char const *text, int start, int end);
 char *lisp_command_generator (char const *text, int state);
@@ -56,21 +56,22 @@ int main (int argc, char *argv[]) {
     while (input.chars != NULL) {
 
         /* convert user's input to a list of tokens */
-        Token *tokens = tokenize (input, NULL);
+        List tokens = tokenize (input, NULL);
+        debug ("done tokenizing\n");
 
-        if (tokens != NULL)
+        if (tokens.len != 0)
         {
             /* Eval: evaluate the tokens, stuffing
              *       the results into a list */
             Var v = (Var){ .list=(List){ .len=0,
                                          .data=NULL },
                            .type=VAR_LIST };
-            for (size_t i = 0; tokens[i].type != TOK_ENDEXPR; ++i)
+            v.list.len = tokens.len;
+            v.list.data = calloc (v.list.len, sizeof(*v.list.data));
+
+            for (size_t i = 0; i < tokens.len; ++i)
             {
-                v.list.data = realloc (v.list.data,
-                                       sizeof(*v.list.data)*(i+1));
-                v.list.data[i] = eval (tokens[i], &global_env);
-                v.list.len++;
+                v.list.data[i] = eval (tokens.data[i], global_env);
             }
 
             /* Print: print the resulting eval list */
@@ -79,9 +80,14 @@ int main (int argc, char *argv[]) {
             }
             free_var (v);
         }
+
         /* clean up the memory allocated for this loop */
-        free_tokens (tokens);
-        tokens = NULL;
+        for (size_t i = 0; i < tokens.len; ++i)
+        {   free_var (tokens.data[i]);
+        }
+        free (tokens.data);
+        tokens.data = NULL;
+        tokens.len  = 0;
 
         /* Read: read the user input */
         free_string (input);
@@ -95,7 +101,7 @@ int main (int argc, char *argv[]) {
 }
 
 /* getinput: read user input and return it as a string */
-String getinput (char const *const prompt)
+String getinput (char const *prompt)
 {
     String s;
     s.chars = NULL;
@@ -155,11 +161,11 @@ char *lisp_command_generator (char const *text, int state)
         len = strlen (text);
     }
 
-    while (i < global_env.len)
+    while (i < global_env->len)
     {   /* TODO: search through all Environments for completions */
         i += 1;
-        if (strncasecmp (global_env.names[i-1].chars, text, len) == 0)
-        {   return strdup (global_env.names[i-1].chars);
+        if (strncasecmp (global_env->names[i-1].chars, text, len) == 0)
+        {   return strdup (global_env->names[i-1].chars);
         }
     }
     return NULL;

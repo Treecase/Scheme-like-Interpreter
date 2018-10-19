@@ -3,89 +3,141 @@
  *
  */
 
+#include "eval.h"
 #include "data.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-Var call (_Function fn, Token const *const args, Environment *hostenv);
+Var call (_Function fn, List args, Environment *hostenv);
 
 
 
-/* eval: get the value of a token */
-Var eval (Token t, Environment *e)
+/* eval: evaluates a Symbol/List.
+ *       for example, given "12.3", returns the Number `12.3',
+ *       given the List ('+ '1 '2), returns the List (+ 1 2) */
+Var eval (Var dat, Environment *env)
 {
-    switch (t.type)
-    {
-    case TOK_NUMBER:
-        return (Var){ .number=t.number,
-                      .type=VAR_NUMBER
-                    };
-        break;
-
-    case TOK_STRING:
-        return (Var){ .str=t.str,
-                      .type=VAR_STRING
-                    };
-        break;
-
-    case TOK_IDENTIFIER:
-      { Var val = id_lookup (e, t.id);
-        if (val.type == VAR_ERROR && val.err.errcode == EC_UNBOUND_VAR)
-        {   free_var (val);
-            return (Var){ .type=VAR_SYMBOL,
-                          .sym=stringdup (t.id)
-                        };
-        }
-        else
-        {   return val;
-        }
-      } break;
-
-    case TOK_EXPR:
-      {
-        if (t.subexpr[0].type == TOK_IDENTIFIER)
-        {
-            Var fn = eval (t.subexpr[0], e);
-            if (fn.type == VAR_FUNCTION)
-            {   return call (fn.fn, t.subexpr+1, e);
-            }
-            else
-            {   return mkerr_var (EC_BAD_SYNTAX, "1st list elem is not a function");
-            }
-        }
-        else
-        {   return mkerr_var (EC_BAD_SYNTAX, "1st list elem is not an id");
-        }
-#if 0
-        List rlist = { .len=0,
-                       .data=NULL
-                     };
-        for (size_t i = 0; t.subexpr[i].type != TOK_ENDEXPR; ++i)
-        {
-            rlist.data = realloc (rlist.data, sizeof(*rlist.data)*(i+1));
-            rlist.data[i] = eval (t.subexpr[i], e);
-            rlist.len++;
-        }
-        return (Var){ .list=rlist,
-                      .type=VAR_LIST
-                    };
-#endif
-      } break;
-
-    case TOK_ENDEXPR:
-        return mkerr_var (EC_BAD_SYNTAX, "how'd this get here?");
-        break;
+    /* if we're given a real Var, just return it */
+    if (dat.type != VAR_SYMBOL && dat.type != VAR_LIST)
+    {   debug ("redundant call to `eval'!");
+        return dat;
     }
 
-    return mkerr_var (EC_BAD_SYNTAX, "Unknown token type");
+    /* A list means a function application,
+     * so we pass it to call */
+    if (dat.type == VAR_LIST)
+    {   debug ("list '%v'\ngetting func...", &dat);
+        Var func = eval (dat.list.data[0], env);
+        if (func.type == VAR_FUNCTION)
+        {   debug ("applying '%v'...", &func);
+            List args  = { .len=dat.list.len-1,
+                           .data=dat.list.data+1 };
+
+            Var result = call (func.fn, args, env);
+
+            return result;
+        }
+        else
+        {   return mkerr_var (EC_BAD_SYNTAX,
+                              "Cannot apply '%v'",
+                              &func);
+        }
+    }
+    else
+    {
+        Var out = { 0 };
+        String sym = dat.sym;
+
+        /* Quoted values begin with ' */
+        if (sym.chars[0] == '\'')
+        {   debug ("quoted value '%s'", sym.chars);
+            out.type = VAR_SYMBOL;
+            out.sym  = mkstring (sym.chars+1);
+        }
+        /* Strings start with ", so if the word begins
+         * with ", we assume it's a String. */
+        if (sym.chars[0] == '"')
+        {   debug ("string '%s'", sym.chars);
+            bool found_endquote = false;
+
+            size_t i = 1;
+            for (; i < sym.len; ++i)
+            {   if (sym.chars[i] == '"')
+                {   found_endquote = true;
+                    i -= 1;
+                    break;
+                }
+            }
+
+            if (found_endquote)
+            {   out.type      = VAR_STRING;
+                out.str.chars = strndup (sym.chars+1, i);
+                out.str.len   = i;
+                out.str.size  = i+1;
+            }
+            else
+            {   return mkerr_var (EC_BAD_SYNTAX,
+                                  "Unbalanced quotes -- '%s'",
+                                  sym.chars);
+            }
+
+        }
+        /* Numbers start with a digit, a sign, or a decimal, so if
+         * the word starts with [1-9], +, -, or ., we assume it's
+         * a Number */
+#define IS_NUMBER(ch)   (isdigit (ch)\
+                        || ch == '+' || ch == '-'\
+                        || ch == '.')
+        else if (IS_NUMBER(sym.chars[0]))
+#undef IS_NUMBER
+        {   debug ("number '%s'", sym.chars);
+            char *end;
+            out.type   = VAR_NUMBER;
+            out.number = strtod (sym.chars, &end);
+
+            /* strtod stores a pointer to the last character used
+             * in conversion in `end'. If the word is a valid Number,
+             * the entire thing should be used by strtod. If strtod
+             * did not use all the characters in the word, then the
+             * word must be either an Identifier or an invalid
+             * Number literal */
+            if (end != sym.chars + sym.len)
+            {   /* check if the symbol is an Identifer */
+                Var val = id_lookup (env, sym);
+                if (val.type == VAR_ERROR && val.err.errcode == EC_UNBOUND_VAR)
+                {   return mkerr_var (EC_BAD_SYNTAX,
+                                      "invalid Number literal '%s'",
+                                      sym.chars);
+                }
+                else
+                {   debug ("^^ wrong, ID");
+                    return val;
+                }
+            }
+        }
+        /* Identifiers can be any sequence of characters, so if the
+         * symbol isn't a Number, and it isn't a String, then it must
+         * be a Symbol -- we have to look up it's value in the
+         * Environment */
+        else
+        {   debug ("identifier '%s'", sym.chars);
+            out = id_lookup (env, sym);
+        }
+
+        return out;
+    }
+    return mkerr_var (EC_GENERAL,
+                      "failure in `%s' -- ???",
+                      __func__);
 }
 
 /* call: evaluate a function */
 Var call (_Function fn,
-          Token const *const args,
+          List args,
           Environment *hostenv)
 {
     /* When a LISPFunction is called, we must pass the arguments into
@@ -108,53 +160,37 @@ Var call (_Function fn,
     {
         LISPFunction func = fn.fn;
 
-        /* pass the args */
-        for (size_t i = 0; args[i].type != TOK_ENDEXPR; ++i)
-        {
-            Identifier var_name = func.env->names[i];
-
-            /* set `var_name' to reference the value of arg[i] */
-            change_value (func.env, var_name, eval (args[i], hostenv));
+        /* add the passed args to the function's Environment */
+        for (size_t i = 0; i < args.len; ++i)
+        {   change_value (func.env,
+                          func.env->names[i],
+                          eval (args.data[i], hostenv));
         }
         func.env->parent = hostenv;
 
-        /* apply the function body to the args */
-        List l = { .len=0,
-                   .data=NULL
-                 };
-        for (size_t i = 0; func.body[i].type != TOK_ENDEXPR; ++i)
-        {
-            l.data = realloc (l.data, sizeof(*l.data)*(i+1));
-            l.data[i] = eval (func.body[i], func.env);
-            l.len++;
-        }
-        return (Var){ .list=l, .type=VAR_LIST };
+        /* call the function */
+        debug ("calling function");
+        Var body = { .type=VAR_LIST, .list=func.body };
+        Var rval = eval (body, func.env);
+
+        debug ("returned '%v'", &rval);
+        return rval;
     }
     /* builtin functions */
     else if (fn.type == FN_BUILTIN)
     {
-        Var *argv = NULL;
-        size_t argc = 0;
-        for (; args[argc].type != TOK_ENDEXPR; ++argc)
-            ;
+        debug ("got %zi args", args.len);
 
-        argv = calloc (argc, sizeof(*argv));
-        for (size_t i = 0; i < argc; ++i)
-        {   argv[i] = eval (args[i], hostenv);
-        }
-
-        Var result = { 0 };
+        Var result;
         if (fn.builtin.fn)
-        {   result = fn.builtin.fn (argc, argv, hostenv);
+        {   result = fn.builtin.fn (args, hostenv);
         }
         else
-        {   result = mkerr_var (EC_BAD_SYNTAX,
-                              "Operation Not Implemented");
+        {   result = mkerr_var (EC_GENERAL,
+                                "Operation Not Implemented");
         }
-        free (argv);
         return result;
     }
-
-    return mkerr_var (EC_BAD_SYNTAX, "in `call'");
+    return mkerr_var (EC_GENERAL, "in `%s' -- ???", __func__);
 }
 
