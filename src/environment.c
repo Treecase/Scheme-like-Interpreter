@@ -34,9 +34,8 @@ Var id_lookup (Environment const *e, Identifier id)
     else if (e->parent != NULL)
     {   return id_lookup (e->parent, id);
     }
-    else
-    {   return mkerr_var (EC_UNBOUND_VAR, "");
-    }
+
+    return mkerr_var (EC_UNBOUND_VAR, "'%s'", id.chars);
 }
 
 /* add_id: add an id to the environment

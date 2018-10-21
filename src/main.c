@@ -25,6 +25,7 @@
 
 char const *const PROMPT = "> ";
 Environment *global_env = { 0 };
+Environment *local_env = NULL;
 
 
 String getinput (char const *prompt);
@@ -47,6 +48,7 @@ int main (int argc, char *argv[]) {
     /* the global_env contains program-scope variable names,
      * (eg +, -, define, etc.) */
     global_env = get_default_environment();
+    local_env = global_env;
 
 
     /* Loop: read input from the user, evaluate it,
@@ -63,9 +65,10 @@ int main (int argc, char *argv[]) {
         {
             /* Eval: evaluate the tokens, stuffing
              *       the results into a list */
-            Var v = (Var){ .list=(List){ .len=0,
-                                         .data=NULL },
-                           .type=VAR_LIST };
+            Var v = (Var){ .type=VAR_LIST,
+                           .list=(List){ .len=0,
+                                         .data=NULL }
+                            };
             v.list.len = tokens.len;
             v.list.data = calloc (v.list.len, sizeof(*v.list.data));
 
@@ -161,11 +164,11 @@ char *lisp_command_generator (char const *text, int state)
         len = strlen (text);
     }
 
-    while (i < global_env->len)
+    while (i < local_env->len)
     {   /* TODO: search through all Environments for completions */
         i += 1;
-        if (strncasecmp (global_env->names[i-1].chars, text, len) == 0)
-        {   return strdup (global_env->names[i-1].chars);
+        if (strncasecmp (local_env->names[i-1].chars, text, len) == 0)
+        {   return strdup (local_env->names[i-1].chars);
         }
     }
     return NULL;

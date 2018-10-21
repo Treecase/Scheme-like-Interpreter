@@ -4,6 +4,7 @@
  */
 
 #include "print.h"
+#include "global-state.h"
 
 #include <stdio.h>
 #include <printf.h>
@@ -18,6 +19,11 @@ int print_var (FILE *stream,
 {
     /* we get passed a Var pointer by printf */
     Var *v = *(Var **)(args[0]);
+
+    if (v == NULL)
+    {   error ("print_var got NULL!");
+        return -1;
+    }
 
     switch (v->type)
     {
@@ -69,6 +75,17 @@ int print_var (FILE *stream,
     case VAR_SYMBOL:
         return fprintf (stream, "%s",
                         v->sym.chars);
+        break;
+
+    case VAR_IDENTIFIER:
+      { Var i = id_lookup (local_env, v->id);
+        return fprintf (stream,
+                        "%v",
+                        &i);
+      } break;
+
+    case VAR_UNDEFINED:
+        return fprintf (stream, "<undefined>");
         break;
     }
     error ("Unknown Var type '%i'", v->type);

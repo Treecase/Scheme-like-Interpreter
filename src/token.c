@@ -12,6 +12,7 @@
 
 
 String read_until (String in, size_t start, char const *const stop_chars);
+Var parse (String word);
 
 char const *const LISP_SEPARATORS = " \t\n)(";
 
@@ -68,11 +69,11 @@ List tokenize (String in, size_t *chars_read)
                     String word = read_until (in, i, LISP_SEPARATORS);
                     debug  ("got '%s'", word.chars);
                     if (word.len > 0)
-                    {   i += word.len-1;
-                        Var *dat  = &symbols.data[symbols.len];
-                        dat->type = VAR_SYMBOL;
-                        dat->sym  = word;
+                    {
+                        i += word.len-1;
+                        symbols.data[symbols.len] = parse (word);
                     }
+                    free_string (word);
                 }
                 symbols.len++;
             }
@@ -112,5 +113,81 @@ finished:
     }
 
     return word;
+}
+
+/* parse: parse a string into a Var */
+Var parse (String word)
+{
+    Var out = { .type=VAR_UNDEFINED };
+
+    /* Quoted values begin with ' */
+    if (word.chars[0] == '\'')
+    {   debug ("quoted value '%s'", word.chars);
+        out.type = VAR_SYMBOL;
+        out.sym  = mkstring (word.chars+1);
+    }
+    /* Strings start with ", so if the word begins
+     * with ", we assume it's a String. */
+    else if (word.chars[0] == '"')
+    {   debug ("string '%s'", word.chars);
+        bool found_endquote = false;
+
+        size_t i = 1;
+        for (; i < word.len; ++i)
+        {   if (word.chars[i] == '"')
+            {   found_endquote = true;
+                i -= 1;
+                break;
+            }
+        }
+
+        if (found_endquote)
+        {   out.type      = VAR_STRING;
+            out.str.chars = strndup (word.chars+1, i);
+            out.str.len   = i;
+            out.str.size  = i+1;
+        }
+        else
+        {   return mkerr_var (EC_BAD_SYNTAX,
+                              "Unbalanced quotes -- '%s'",
+                              word.chars);
+        }
+    }
+    /* Numbers start with a digit, a sign, or a decimal, so if
+     * the word starts with [1-9], or if it's longer than 1
+     * character and begins with +, -, or ., it's a Number. */
+#define IS_NUMBER(str)  (isdigit (str.chars[0])\
+                        || (str.len > 1\
+                         && (str.chars[0] == '+'\
+                          || str.chars[0] == '-'\
+                          || str.chars[0] == '.')))
+    else if (IS_NUMBER(word))
+#undef IS_NUMBER
+    {   debug ("number '%s'", word.chars);
+        char *end;
+        out.type   = VAR_NUMBER;
+        out.number = strtod (word.chars, &end);
+
+        /* strtod stores a pointer to the last character used
+         * in conversion in `end'. If the word is a valid Number,
+         * the entire thing should be used by strtod. If strtod
+         * did not use all the characters in the word, then the
+         * word must be either an Identifier or an invalid
+         * Number literal */
+        if (end != word.chars + word.len)
+        {   return mkerr_var (EC_BAD_SYNTAX,
+                                  "invalid Number literal '%s'",
+                                  word.chars);
+        }
+    }
+    /* Identifiers can be any sequence of characters, so if all else
+     * fails, it must be an identifier */
+    else
+    {   debug ("identifier '%s'", word.chars);
+        out.type = VAR_IDENTIFIER;
+        out.sym  = stringdup (word);
+    }
+
+    return out;
 }
 

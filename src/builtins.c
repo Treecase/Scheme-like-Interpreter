@@ -48,7 +48,7 @@ MKBUILTIN(add)
         return result;
     }
     else
-    {   return ARG_COUNT_MISMATCH_ERROR(0, argv.len);
+    {   return ARG_COUNT_MISMATCH_ERROR(1, argv.len);
     }
     return GENERAL_FAILURE_ERROR();
 }
@@ -87,7 +87,7 @@ MKBUILTIN(sub)
         }
     }
     else
-    {   return ARG_COUNT_MISMATCH_ERROR(0, argv.len);
+    {   return ARG_COUNT_MISMATCH_ERROR(1, argv.len);
     }
     return GENERAL_FAILURE_ERROR();
 }
@@ -153,7 +153,7 @@ MKBUILTIN(div)
         return result;
     }
     else
-    {   return ARG_COUNT_MISMATCH_ERROR(0, argv.len);
+    {   return ARG_COUNT_MISMATCH_ERROR(1, argv.len);
     }
     return GENERAL_FAILURE_ERROR();
 }
@@ -166,13 +166,13 @@ MKBUILTIN(define)
 {
     if (argv.len == 2)
     {
-        if (argv.data[0].type == VAR_SYMBOL)
+        if (argv.data[0].type == VAR_IDENTIFIER)
         {   add_id (env, argv.data[0].sym, eval (argv.data[1], env));
-            return id_lookup (env, argv.data[0].sym);
+            return (Var){ .type=VAR_UNDEFINED };
         }
         else
         {   return mkerr_var (EC_INVALID_ARG,
-                              "%T is not an identifier",
+                              "%v is not an identifier",
                               &argv.data[0]);
         }
     }
@@ -191,41 +191,43 @@ MKBUILTIN(lambda)
 {
     if (argv.len == 2)
     {
-        if (argv.data[0].type != VAR_LIST)
+        Var formals = argv.data[0],
+            body    = argv.data[1];
+
+        if (formals.type != VAR_LIST)
         {   return mkerr_var (EC_INVALID_ARG,
                               "%s -- '%v' is not a list",
-                              __func__, &argv.data[0]);
+                              __func__, &formals);
         }
-        if (argv.data[1].type != VAR_LIST)
+        if (body.type != VAR_LIST)
         {   return mkerr_var (EC_INVALID_ARG,
                               "%s -- '%v' is not a list",
-                              __func__, &argv.data[1]);
+                              __func__, &body);
         }
 
         debug ("lambda got arglist '%v' (length %zi)",
-               &argv.data[0], argv.data[0].list.len);
+               &formals, formals.list.len);
 
-        /* TODO: clean this section up */
+
         Environment *fn_env = calloc (1, sizeof(*fn_env));
         fn_env->len    = 0;
         fn_env->parent = env;
 
-
-        for (size_t i = 0; i < argv.data[0].list.len; ++i)
-        {   add_id (fn_env, argv.data[0].list.data[i].sym, (Var){ 0 });
+        for (size_t i = 0; i < formals.list.len; ++i)
+        {   add_id (fn_env, formals.list.data[i].sym, (Var){ .type=VAR_UNDEFINED });
             debug ("NAME %zi = '%s'",
                    i,
                    fn_env->names[i].chars);
         }
 
-        List body;
-        body.len  = argv.data[1].list.len;
-        body.data = malloc (body.len * sizeof(*body.data));
-        for (size_t i = 0; i < body.len; ++i)
-        {   body.data[i] = vardup (argv.data[1].list.data[i]);
+        List fnbody;
+        fnbody.len  = body.list.len;
+        fnbody.data = malloc (fnbody.len * sizeof(*fnbody.data));
+        for (size_t i = 0; i < fnbody.len; ++i)
+        {   fnbody.data[i] = vardup (body.list.data[i]);
         }
 
-        LISPFunction f = { .body=body,
+        LISPFunction f = { .body=fnbody,
                            .env =fn_env     };
         _Function func = { .type=FN_LISPFN,
                            .fn  =f          };

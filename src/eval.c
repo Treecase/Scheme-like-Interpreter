@@ -5,6 +5,7 @@
 
 #include "eval.h"
 #include "data.h"
+#include "global-state.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -21,12 +22,6 @@ Var call (_Function fn, List args, Environment *hostenv);
  *       given the List ('+ '1 '2), returns the List (+ 1 2) */
 Var eval (Var dat, Environment *env)
 {
-    /* if we're given a real Var, just return it */
-    if (dat.type != VAR_SYMBOL && dat.type != VAR_LIST)
-    {   debug ("redundant call to `eval'!");
-        return dat;
-    }
-
     /* A list means a function application,
      * so we pass it to call */
     if (dat.type == VAR_LIST)
@@ -47,92 +42,11 @@ Var eval (Var dat, Environment *env)
                               &func);
         }
     }
-    else
-    {
-        Var out = { 0 };
-        String sym = dat.sym;
-
-        /* Quoted values begin with ' */
-        if (sym.chars[0] == '\'')
-        {   debug ("quoted value '%s'", sym.chars);
-            out.type = VAR_SYMBOL;
-            out.sym  = mkstring (sym.chars+1);
-        }
-        /* Strings start with ", so if the word begins
-         * with ", we assume it's a String. */
-        if (sym.chars[0] == '"')
-        {   debug ("string '%s'", sym.chars);
-            bool found_endquote = false;
-
-            size_t i = 1;
-            for (; i < sym.len; ++i)
-            {   if (sym.chars[i] == '"')
-                {   found_endquote = true;
-                    i -= 1;
-                    break;
-                }
-            }
-
-            if (found_endquote)
-            {   out.type      = VAR_STRING;
-                out.str.chars = strndup (sym.chars+1, i);
-                out.str.len   = i;
-                out.str.size  = i+1;
-            }
-            else
-            {   return mkerr_var (EC_BAD_SYNTAX,
-                                  "Unbalanced quotes -- '%s'",
-                                  sym.chars);
-            }
-
-        }
-        /* Numbers start with a digit, a sign, or a decimal, so if
-         * the word starts with [1-9], +, -, or ., we assume it's
-         * a Number */
-#define IS_NUMBER(ch)   (isdigit (ch)\
-                        || ch == '+' || ch == '-'\
-                        || ch == '.')
-        else if (IS_NUMBER(sym.chars[0]))
-#undef IS_NUMBER
-        {   debug ("number '%s'", sym.chars);
-            char *end;
-            out.type   = VAR_NUMBER;
-            out.number = strtod (sym.chars, &end);
-
-            /* strtod stores a pointer to the last character used
-             * in conversion in `end'. If the word is a valid Number,
-             * the entire thing should be used by strtod. If strtod
-             * did not use all the characters in the word, then the
-             * word must be either an Identifier or an invalid
-             * Number literal */
-            if (end != sym.chars + sym.len)
-            {   /* check if the symbol is an Identifer */
-                Var val = id_lookup (env, sym);
-                if (val.type == VAR_ERROR && val.err.errcode == EC_UNBOUND_VAR)
-                {   return mkerr_var (EC_BAD_SYNTAX,
-                                      "invalid Number literal '%s'",
-                                      sym.chars);
-                }
-                else
-                {   debug ("^^ wrong, ID");
-                    return val;
-                }
-            }
-        }
-        /* Identifiers can be any sequence of characters, so if the
-         * symbol isn't a Number, and it isn't a String, then it must
-         * be a Symbol -- we have to look up it's value in the
-         * Environment */
-        else
-        {   debug ("identifier '%s'", sym.chars);
-            out = id_lookup (env, sym);
-        }
-
-        return out;
+    /* Identifier */
+    else if (dat.type == VAR_IDENTIFIER)
+    {   return id_lookup (env, dat.id);
     }
-    return mkerr_var (EC_GENERAL,
-                      "failure in `%s' -- ???",
-                      __func__);
+    return vardup (dat);
 }
 
 /* call: evaluate a function */
@@ -160,6 +74,14 @@ Var call (_Function fn,
     {
         LISPFunction func = fn.fn;
 
+        if (args.len != func.env->len)
+        {   return mkerr_var (EC_INVALID_ARG,
+                              "%s arguments. Expected %zi, got %zi",
+                              (args.len > func.env->len)? "Too many" : "Not enough",
+                              func.env->len,
+                              args.len);
+        }
+
         /* add the passed args to the function's Environment */
         for (size_t i = 0; i < args.len; ++i)
         {   change_value (func.env,
@@ -168,12 +90,15 @@ Var call (_Function fn,
         }
         func.env->parent = hostenv;
 
+        local_env = func.env;
+
         /* call the function */
         debug ("calling function");
         Var body = { .type=VAR_LIST, .list=func.body };
         Var rval = eval (body, func.env);
 
         debug ("returned '%v'", &rval);
+        local_env = hostenv;
         return rval;
     }
     /* builtin functions */

@@ -23,6 +23,10 @@ Var vardup (Var v)
         new.str = stringdup (v.str);
         break;
 
+    case VAR_IDENTIFIER:
+        new.id = stringdup (v.id);
+        break;
+
     case VAR_SYMBOL:
         new.sym = stringdup (v.sym);
         break;
@@ -52,6 +56,7 @@ Var vardup (Var v)
 
     /* these don't alloc memory */
     case VAR_NUMBER:
+    case VAR_UNDEFINED:
         break;
     }
     return new;
@@ -66,6 +71,9 @@ void free_var (Var v)
         break;
     case VAR_SYMBOL:
         free_string (v.sym);
+        break;
+    case VAR_IDENTIFIER:
+        free_string (v.id);
         break;
 
     case VAR_LIST:
@@ -91,6 +99,7 @@ void free_var (Var v)
 
     /* these don't alloc memory */
     case VAR_NUMBER:
+    case VAR_UNDEFINED:
         break;
     }
 }
