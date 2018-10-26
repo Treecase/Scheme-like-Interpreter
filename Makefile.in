@@ -1,6 +1,6 @@
 
 CC=gcc
-LDFLAGS=-lreadline
+LDFLAGS=-lreadline -lgc
 
 CFLAGS=-Wall -Wextra
 ifeq ($(DEBUG_BUILD), true)
@@ -15,6 +15,7 @@ interpret : $(OBJ)
 	$(CC) $^ $(LDFLAGS) -o $@
 
 -include $(DEP)
+
 
 src/obj/%.o : src/%.c
 	$(CC) $< -c -o $@ $(CFLAGS)

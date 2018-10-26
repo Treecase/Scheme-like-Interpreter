@@ -6,7 +6,6 @@
 #include "error.h"
 #include "data.h"
 
-#include <stdlib.h> /* malloc */
 #include <stdio.h>  /* vsnprintf */
 #include <stdarg.h> /* va_list, etc. */
 
@@ -35,7 +34,7 @@ static Error _mkerr_va (Errcode t, char *flavour, va_list ap)
     else
     {
         len += 1;
-        buf = malloc (len);
+        buf = GC_malloc (len);
         vsnprintf (buf, len, flavour, ap);
 
         return (Error){ .errcode=t,
@@ -66,13 +65,14 @@ Error mkerr (Errcode t, char *flavour, ...)
 }
 
 /* mkerr_var: create an error Var with type t */
-Var mkerr_var (Errcode t, char *flavour, ...)
+Var *mkerr_var (Errcode t, char *flavour, ...)
 {
     va_list ap;
     va_start (ap, flavour);
-    Var r = { .type=VAR_ERROR,
-              .err =_mkerr_va (t, flavour, ap)
-            };
+
+    Var *r = new_var (VAR_ERROR);
+    r->err = _mkerr_va (t, flavour, ap);
+
     va_end (ap);
     return r;
 }

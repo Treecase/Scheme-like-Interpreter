@@ -15,9 +15,9 @@
  *  Associates variable names to values
  */
 typedef struct Environment
-{   size_t      len;
-    Identifier *names;
-    struct Var *values;
+{   size_t       len;
+    Identifier  *names;
+    struct Var **values;
 
     struct Environment *parent;
 } Environment;
@@ -26,10 +26,10 @@ typedef struct Environment
 
 Environment *get_default_environment(void);
 
-struct Var id_lookup (Environment const *e, Identifier id);
+struct Var *id_lookup (Environment const *e, Identifier id);
 
-void add_id (Environment *e, Identifier id, struct Var v);
-void change_value (Environment *e, Identifier id, struct Var new);
+void add_id (Environment *e, Identifier id, struct Var const *v);
+void change_value (Environment *e, Identifier id, struct Var const *new);
 
 void free_env (Environment *e);
 

@@ -31,7 +31,7 @@ typedef struct Error
 
 char const *err_msg (Error e);
 Error mkerr (Errcode t, char *flavour, ...);
-struct Var mkerr_var (Errcode t, char *flavour, ...);
+struct Var *mkerr_var (Errcode t, char *flavour, ...);
 
 #endif
 

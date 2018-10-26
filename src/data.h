@@ -11,13 +11,22 @@
 #include "token.h"
 #include "environment.h"
 
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include <gc/gc.h>
+
+#include <stdio.h>      /* fprintf */
+#include <stddef.h>     /* size_t */
+#include <stdlib.h>     /* EXIT_FAILURE */
+#include <stdbool.h>    /* bool */
 
 
 /* TODO: make this configurable */
-#define DEBUG_FILE  stdout
+#define DEBUG_FILE  stderr
+
+/* NOTE: this is so GCC ignores the unknown format
+ * errors caused by the custom `%v' format */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat="
+#pragma GCC diagnostic ignored "-Wformat-extra-args"
 
 #define fatal(format, ...)  ({  fprintf (stderr, format "\n", ##__VA_ARGS__); exit (EXIT_FAILURE);  })
 #define error(format, ...)  ({  fprintf (stderr, format "\n", ##__VA_ARGS__);   })
@@ -29,12 +38,13 @@
 #endif
 
 
+
 /* List:
  *  List of Vars
  */
 typedef struct List
-{   size_t      len;
-    struct Var *data;
+{   size_t       len;
+    struct Var **data;
 } List;
 
 
@@ -43,7 +53,7 @@ typedef struct List
  *  just a saved token list
  */
 typedef struct LISPFunction
-{   List         body;
+{   struct Var  *body;
     Environment *env;
 } LISPFunction;
 
@@ -53,7 +63,8 @@ typedef struct LISPFunction
  *  C function pointers
  */
 typedef struct BuiltIn
-{   struct Var (*fn)(List, Environment *);
+{   struct Var *(*fn)(List, Environment *);
+    char *name;
 } BuiltIn;
 
 

@@ -7,6 +7,12 @@
 #define __VAR_H
 
 
+#include <stdbool.h>    /* bool */
+
+#define UNDEFINED   (new_var (VAR_UNDEFINED))
+
+
+
 /* Var:
  *  A LISP variable
  */
@@ -15,17 +21,18 @@ typedef struct Var
     {   Error      err;
         double     number;
         String     str;
+        bool       boolean;
         _Function  fn;
         List       list;
         String     sym;
         Identifier id;
     };
-    enum
-    {
-        VAR_UNDEFINED,
+    enum VarType
+    {   VAR_UNDEFINED,
         VAR_ERROR,
         VAR_NUMBER,
         VAR_STRING,
+        VAR_BOOLEAN,
         VAR_FUNCTION,
         VAR_LIST,
         VAR_SYMBOL,
@@ -35,8 +42,7 @@ typedef struct Var
 
 
 
-Var vardup (Var v);
-void free_var (Var v);
+Var *new_var (enum VarType t);
 
 
 #endif

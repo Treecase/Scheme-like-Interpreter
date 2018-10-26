@@ -12,7 +12,7 @@
 
 
 #define _GETBUILTINNAME(NAME)   _builtin_ ## NAME
-#define MKBUILTIN(NAME)         Var _GETBUILTINNAME(NAME)\
+#define MKBUILTIN(NAME)         Var * _GETBUILTINNAME(NAME)\
                                 (List argv,\
                                  Environment *env)
 

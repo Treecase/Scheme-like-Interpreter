@@ -15,7 +15,7 @@
  *  generic string container
  */
 typedef struct String
-{   char   *chars;
+{   char  *chars;
     size_t size,
            len;
 } String;
@@ -29,8 +29,10 @@ typedef String Identifier;
 
 
 String mkstring (char const *str);
+String mknstring (char const *str, size_t n);
+
 String stringdup (String str);
-void free_string (String s);
+
 int stringcmp (String a, String b);
 
 

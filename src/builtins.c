@@ -4,7 +4,7 @@
  * ie + - * /, etc.
  *
  *
- * NOTE: MKBUILTIN returns `Var _builtin_[argument] (size_t argc, Var *argv, Environment env)
+ * NOTE: MKBUILTIN returns `Var *_builtin_[argument] (size_t argc, Var **argv, Environment env)
  *
  */
 
@@ -29,20 +29,19 @@
 /* add: Addition. Can take infinite arguments */
 MKBUILTIN(add)
 {
-    Var result = { .type=VAR_NUMBER,
-                   .number=0
-                 };
+    Var *result    = new_var(VAR_NUMBER);
+    result->number = 0;
 
     if (argv.len > 0)
     {
         for (size_t i = 0; i < argv.len; ++i)
         {
-            Var n = eval (argv.data[i], env);
-            if (n.type == VAR_NUMBER)
-            {   result.number += n.number;
+            Var *n = eval (argv.data[i], env);
+            if (n->type == VAR_NUMBER)
+            {   result->number += n->number;
             }
             else
-            {   return NOT_A_NUMBER_ERROR(&argv.data[i]);
+            {   return NOT_A_NUMBER_ERROR(argv.data[i]);
             }
         }
         return result;
@@ -57,33 +56,33 @@ MKBUILTIN(add)
  *  NOTE: Also supports negation, ie (- 1) ===> -1  */
 MKBUILTIN(sub)
 {
+    Var *result    = new_var (VAR_NUMBER);
+    result->number = argv.data[0]->number;
+
     if (argv.len > 0)
-    {   if (argv.data[0].type != VAR_NUMBER)
-        {   return NOT_A_NUMBER_ERROR(&argv.data[0]);
+    {   if (argv.data[0]->type != VAR_NUMBER)
+        {   return NOT_A_NUMBER_ERROR(argv.data[0]);
         }
 
         /* more than 1 arg means subtraction */
         if (argv.len > 1)
         {
-            Var result = { .type  =VAR_NUMBER,
-                           .number=argv.data[0].number };
-
             for (size_t i = 1; i < argv.len; ++i)
             {
-                Var n = eval (argv.data[i], env);
-                if (n.type == VAR_NUMBER)
-                {   result.number -= n.number;
+                Var *n = eval (argv.data[i], env);
+                if (n->type == VAR_NUMBER)
+                {   result->number -= n->number;
                 }
                 else
-                {   return NOT_A_NUMBER_ERROR(&argv.data[i]);
+                {   return NOT_A_NUMBER_ERROR(argv.data[i]);
                 }
             }
             return result;
         }
         /* 1 arg means negation */
         else
-        {   return (Var){ .type  =VAR_NUMBER,
-                          .number=(-1) * argv.data[0].number };
+        {   result->number = -1 * argv.data[0]->number;
+            return result;
         }
     }
     else
@@ -95,31 +94,25 @@ MKBUILTIN(sub)
 /* mul: Multiplication. Can take infinite arguments */
 MKBUILTIN(mul)
 {
-    Var result = { .type=VAR_NUMBER,
-                   .number=0
-                 };
+    Var *result    = new_var (VAR_NUMBER);
+    result->number = 1;
 
     if (argv.len > 0)
     {
-        Var n = eval (argv.data[0], env);
-        if (n.type == VAR_NUMBER)
-        {   result.number = n.number;
-        }
-        else
-        {   return NOT_A_NUMBER_ERROR(&argv.data[0]);
-        }
-
-        for (size_t i = 1; i < argv.len; ++i)
+        for (size_t i = 0; i < argv.len; ++i)
         {
-            n = eval (argv.data[i], env);
-            if (n.type == VAR_NUMBER)
-            {   result.number *= n.number;
+            Var *n = eval (argv.data[i], env);
+            if (n->type == VAR_NUMBER)
+            {   result->number *= n->number;
             }
             else
-            {   return NOT_A_NUMBER_ERROR(&argv.data[i]);
+            {   return NOT_A_NUMBER_ERROR(argv.data[i]);
             }
         }
         return result;
+    }
+    else
+    {   return ARG_COUNT_MISMATCH_ERROR(1, argv.len);
     }
     return GENERAL_FAILURE_ERROR();
 }
@@ -127,27 +120,27 @@ MKBUILTIN(mul)
 /* div: Division. Can take infinite arguments */
 MKBUILTIN(div)
 {
+    Var *result    = new_var (VAR_NUMBER);
+    result->number = 1;
+
     if (argv.len > 0)
     {
-        Var result = { .type =VAR_NUMBER,
-                       .number=0          };
-
-        Var n = eval (argv.data[0], env);
-        if (n.type == VAR_NUMBER)
-        {   result.number = n.number;
+        Var *n = eval (argv.data[0], env);
+        if (n->type == VAR_NUMBER)
+        {   result->number = n->number;
         }
         else
-        {   return NOT_A_NUMBER_ERROR(&argv.data[0]);
+        {   return NOT_A_NUMBER_ERROR(argv.data[0]);
         }
 
         for (size_t i = 1; i < argv.len; ++i)
         {
             n = eval (argv.data[i], env);
-            if (n.type == VAR_NUMBER)
-            {   result.number /= n.number;
+            if (n->type == VAR_NUMBER)
+            {   result->number /= n->number;
             }
             else
-            {   return NOT_A_NUMBER_ERROR(&argv.data[i]);
+            {   return NOT_A_NUMBER_ERROR(argv.data[i]);
             }
         }
         return result;
@@ -160,20 +153,22 @@ MKBUILTIN(div)
 
 
 /* define: takes two arguments -- a Symbol and a Var.
- *         adds the Var to the current Environment
+ *         adds the Var * to the current Environment
  *         under the Symbol's name */
 MKBUILTIN(define)
 {
     if (argv.len == 2)
     {
-        if (argv.data[0].type == VAR_IDENTIFIER)
-        {   add_id (env, argv.data[0].sym, eval (argv.data[1], env));
-            return (Var){ .type=VAR_UNDEFINED };
+        if (argv.data[0]->type == VAR_IDENTIFIER)
+        {   add_id (env,
+                    argv.data[0]->id,
+                    eval (argv.data[1], env));
+            return UNDEFINED;
         }
         else
         {   return mkerr_var (EC_INVALID_ARG,
                               "%v is not an identifier",
-                              &argv.data[0]);
+                              argv.data[0]);
         }
     }
     else
@@ -191,50 +186,43 @@ MKBUILTIN(lambda)
 {
     if (argv.len == 2)
     {
-        Var formals = argv.data[0],
-            body    = argv.data[1];
+        /* formals = arguments */
+        Var *formals = argv.data[0],
+            *body    = argv.data[1];
 
-        if (formals.type != VAR_LIST)
+        if (formals->type != VAR_LIST)
         {   return mkerr_var (EC_INVALID_ARG,
                               "%s -- '%v' is not a list",
-                              __func__, &formals);
-        }
-        if (body.type != VAR_LIST)
-        {   return mkerr_var (EC_INVALID_ARG,
-                              "%s -- '%v' is not a list",
-                              __func__, &body);
+                              __func__, formals);
         }
 
         debug ("lambda got arglist '%v' (length %zi)",
-               &formals, formals.list.len);
+               formals, formals->list.len);
 
 
-        Environment *fn_env = calloc (1, sizeof(*fn_env));
+        /* Create a new Environment, filling it's `names' list
+         * with the ids of the Identifiers in `formals' */
+        Environment *fn_env = GC_malloc (sizeof(*fn_env));
         fn_env->len    = 0;
         fn_env->parent = env;
 
-        for (size_t i = 0; i < formals.list.len; ++i)
-        {   add_id (fn_env, formals.list.data[i].sym, (Var){ .type=VAR_UNDEFINED });
+        for (size_t i = 0; i < formals->list.len; ++i)
+        {   add_id (fn_env,
+                    formals->list.data[i]->id,
+                    UNDEFINED);
             debug ("NAME %zi = '%s'",
                    i,
                    fn_env->names[i].chars);
         }
 
-        List fnbody;
-        fnbody.len  = body.list.len;
-        fnbody.data = malloc (fnbody.len * sizeof(*fnbody.data));
-        for (size_t i = 0; i < fnbody.len; ++i)
-        {   fnbody.data[i] = vardup (body.list.data[i]);
-        }
-
-        LISPFunction f = { .body=fnbody,
+        /* Return the Function as a Var */
+        LISPFunction f = { .body=body,
                            .env =fn_env     };
         _Function func = { .type=FN_LISPFN,
                            .fn  =f          };
 
-        Var result;
-        result.type = VAR_FUNCTION;
-        result.fn   = func;
+        Var *result = new_var (VAR_FUNCTION);
+        result->fn  = func;
 
         return result;
     }
@@ -248,4 +236,8 @@ MKBUILTIN(lambda)
 
 #undef MKBUILTIN
 #undef _GETBUILTINNAME
+
+#undef NOT_A_NUMBER_ERROR
+#undef ARG_COUNT_MISMATCH_ERROR
+#undef GENERAL_FAILURE_ERROR
 

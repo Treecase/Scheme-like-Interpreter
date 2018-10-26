@@ -1,4 +1,5 @@
 interpret
 src/obj/*
 src/dep/*
+src/unused
 Makefile

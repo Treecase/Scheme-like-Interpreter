@@ -10,7 +10,7 @@
 
 
 
-struct List tokenize (String in, size_t *chars_read);
+struct Var *tokenize (String in, size_t *chars_read);
 
 
 #endif

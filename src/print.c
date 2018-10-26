@@ -20,73 +20,86 @@ int print_var (FILE *stream,
     /* we get passed a Var pointer by printf */
     Var *v = *(Var **)(args[0]);
 
-    if (v == NULL)
-    {   error ("print_var got NULL!");
-        return -1;
-    }
-
-    switch (v->type)
-    {
-    case VAR_NUMBER:
-        return fprintf (stream, "%g", v->number);
-        break;
-
-    case VAR_STRING:
-        return fprintf (stream, "\"%s\"", v->str.chars);
-        break;
-
-    case VAR_FUNCTION:
-        if (v->fn.type == FN_LISPFN)
-        {   return fprintf (stream, "<function at %p>",
-                            v->fn.fn.body.data);
-        }
-        else if (v->fn.type == FN_BUILTIN)
-        {   return fprintf (stream, "<builtin at %p>",
-                            v->fn.builtin.fn);
-        }
-        else
-        {   return fprintf (stream, "unknown function type %i",
-                            v->fn.type);
-        }
-        break;
-
-    case VAR_LIST:
-     {  int len = 2;
-        fputc ('(', stream);
-        for (size_t i = 0; i < v->list.len-1; ++i)
+    if (v != NULL)
+    {   switch (v->type)
         {
-            len += fprintf (stream, "%v", &v->list.data[i]) + 1;
-            fputc (' ', stream);
+        case VAR_NUMBER:
+            return fprintf (stream, "%g", v->number);
+            break;
+
+        case VAR_STRING:
+            return fprintf (stream, "\"%s\"", v->str.chars);
+            break;
+
+        case VAR_BOOLEAN:
+            return fprintf (stream, "%s", v->boolean? "#t" : "#f");
+            break;
+
+        case VAR_FUNCTION:
+            if (v->fn.type == FN_LISPFN)
+            {   return fprintf (stream, "<function (%v)>",
+                                v->fn.fn.body);
+            }
+            else if (v->fn.type == FN_BUILTIN)
+            {   return fprintf (stream, "<builtin %s at %p>",
+                                v->fn.builtin.name,
+                                v->fn.builtin.fn);
+            }
+            else
+            {   return fprintf (stream, "unknown function type %i",
+                                v->fn.type);
+            }
+            break;
+
+        case VAR_LIST:
+         {  int len = 2;
+            fputc ('(', stream);
+            if (v->list.len > 0)
+            {
+                for (size_t i = 0; i < v->list.len-1; ++i)
+                {
+                    len += fprintf (stream, "%v", v->list.data[i]) + 1;
+                    fputc (' ', stream);
+                }
+                len += fprintf (stream, "%v",
+                                v->list.data[v->list.len-1]);
+            }
+            fputc (')', stream);
+            return len;
+         }  break;
+
+        case VAR_ERROR:
+            return fprintf (stream, "[%s: %s]",
+                            err_msg (v->err),
+                            v->err.flavour);
+            break;
+
+        case VAR_SYMBOL:
+            return fprintf (stream, "%s",
+                            v->sym.chars);
+            break;
+
+        case VAR_IDENTIFIER:
+          { Var *i = id_lookup (local_env, v->id);
+            if (i->type == VAR_ERROR && i->err.errcode == EC_UNBOUND_VAR)
+            {   return fprintf (stream,
+                                "%s",
+                                v->id.chars);
+            }
+            else
+            {   return fprintf (stream,
+                                "id->%v",
+                                i);
+            }
+          } break;
+
+        case VAR_UNDEFINED:
+            return fprintf (stream, "<undefined>");
+            break;
         }
-        if (v->list.len > 0)
-        {   len += fprintf (stream, "%v",
-                            &v->list.data[v->list.len-1]);
-        }
-        fputc (')', stream);
-        return len;
-     }  break;
-
-    case VAR_ERROR:
-        return fprintf (stream, "[%s: %s]",
-                        err_msg (v->err),
-                        v->err.flavour);
-        break;
-
-    case VAR_SYMBOL:
-        return fprintf (stream, "%s",
-                        v->sym.chars);
-        break;
-
-    case VAR_IDENTIFIER:
-      { Var i = id_lookup (local_env, v->id);
-        return fprintf (stream,
-                        "%v",
-                        &i);
-      } break;
-
-    case VAR_UNDEFINED:
-        return fprintf (stream, "<undefined>");
-        break;
+    }
+    else
+    {   return fprintf (stream, "NULL");
     }
     error ("Unknown Var type '%i'", v->type);
     return -1;
