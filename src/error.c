@@ -77,3 +77,9 @@ Var *mkerr_var (Errcode t, char *flavour, ...)
     return r;
 }
 
+/* duplicate_err: duplicate e */
+Error duplicate_err (Error e)
+{
+    return mkerr (e.errcode, e.flavour);
+}
+

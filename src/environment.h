@@ -26,6 +26,8 @@ typedef struct Environment
 
 Environment *get_default_environment(void);
 
+Environment *duplicate_env (Environment *e);
+
 struct Var *id_lookup (Environment const *e, Identifier id);
 
 void add_id (Environment *e, Identifier id, struct Var const *v);

@@ -44,6 +44,7 @@ int main (int argc, char *argv[]) {
     GC_init();
 
     init_readline();
+    using_history();
 
     /* we use a custom printf format (%v) for LISP Vars,
      * so we need to register it with printf */

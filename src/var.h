@@ -2,6 +2,7 @@
  * Variables
  *
  */
+/* TODO: switch List to Pair */
 
 #ifndef __VAR_H
 #define __VAR_H
@@ -29,6 +30,7 @@ typedef struct Var
     };
     enum VarType
     {   VAR_UNDEFINED,
+        VAR_EMPTY,
         VAR_ERROR,
         VAR_NUMBER,
         VAR_STRING,
@@ -43,6 +45,7 @@ typedef struct Var
 
 
 Var *new_var (enum VarType t);
+Var *duplicate_var (Var *v);
 
 
 #endif

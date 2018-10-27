@@ -80,22 +80,21 @@ void change_value (Environment *e, Identifier id, Var const *new)
 
 
 
-char const *const builtin_names[] =
- {  "+",
-    "-",
-    "*",
-    "/",
-    "define",
-    "lambda",
- };
+struct
+{   char const *const name;
+    Var *(*funcptr)(List, Environment *);
+} builtins[] =
+ {  { "+",          _builtin_add        },
+    { "-",          _builtin_sub        },
+    { "*",          _builtin_mul        },
+    { "/",          _builtin_div        },
+    { "define",     _builtin_define     },
+    { "lambda",     _builtin_lambda     },
+    { "if",         _builtin_if         },
+    { "set!",       _builtin_set        },
+    { "include",    _builtin_include    },
+    { "include-ci", _builtin_include_ci },
 
-Var *(*builtin_funcptrs[])(List, Environment *) =
- {  _builtin_add,
-    _builtin_sub,
-    _builtin_mul,
-    _builtin_div,
-    _builtin_define,
-    _builtin_lambda,
  };
 
 #define LEN(arr)    (sizeof(arr)/sizeof(*arr))
@@ -107,15 +106,15 @@ Environment *get_default_environment(void)
     Environment *env = GC_malloc (sizeof(*env));
 
     env->parent = NULL;
-    env->len    = LEN(builtin_names);
+    env->len    = LEN(builtins);
 
     env->names  = GC_malloc (env->len * sizeof(*env->names ));
     env->values = GC_malloc (env->len * sizeof(*env->values));
 
     for (size_t i = 0; i < env->len; ++i)
     {
-        BuiltIn   _bltin = { .fn  =builtin_funcptrs[i],
-                             .name=builtin_names[i]     };
+        BuiltIn   _bltin = { .fn  =builtins[i].funcptr,
+                             .name=builtins[i].name     };
         _Function _func  = { .type   =FN_BUILTIN,
                              .builtin=_bltin
                            };
@@ -123,8 +122,32 @@ Environment *get_default_environment(void)
         env->values[i]     = new_var (VAR_FUNCTION);
         env->values[i]->fn = _func;
 
-        env->names[i] = mkstring (builtin_names[i]);
+        env->names[i] = mkstring (builtins[i].name);
     }
     return env;
+}
+
+/* duplicate_env: duplicate e */
+Environment *duplicate_env (Environment *e)
+{
+    Environment *new = GC_malloc (sizeof(*new));
+
+    new->len    = e->len;
+    new->names  = GC_malloc (new->len * sizeof(*new->names));
+    new->values = GC_malloc (new->len * sizeof(*new->values));
+
+
+    for (size_t i = 0; i < e->len; ++i)
+    {
+        new->names [i] = stringdup     (e->names [i]);
+        new->values[i] = duplicate_var (e->values[i]);
+    }
+
+    if (e->parent != NULL)
+    {
+        new->parent = duplicate_env (e->parent);
+    }
+
+    return new;
 }
 

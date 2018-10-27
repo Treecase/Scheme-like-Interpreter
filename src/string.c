@@ -68,10 +68,15 @@ int stringcmp (String a, String b)
         return strncmp (a.chars, b.chars, n);
     }
     else
-    {   error ("%s failed -- string %s is NULL!",
-               __func__,
-               (a.chars == NULL)? "a" : "b");
-        return -1;
+    {   if (a.chars == b.chars)
+        {   return 0;
+        }
+        else if (a.chars == NULL)
+        {   return -1;
+        }
+        else
+        {   return 1;
+        }
     }
 }
 

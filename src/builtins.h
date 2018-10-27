@@ -27,6 +27,13 @@ MKBUILTIN(define);
 
 MKBUILTIN(lambda);
 
+MKBUILTIN(if);
+
+MKBUILTIN(set);
+
+MKBUILTIN(include);
+MKBUILTIN(include_ci);
+
 
 #ifndef _NO_UNDEF_MKDEFINE
 #undef MKBUILTIN

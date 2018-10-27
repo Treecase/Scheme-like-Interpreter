@@ -2,6 +2,7 @@
  * Tokenize LISP expressions
  *
  */
+/* TODO: comments, '`', ',' and ',@', '\' (pg 9) */
 
 #include "data.h"
 #include "global-state.h"
@@ -13,9 +14,9 @@
 
 
 String read_until (String in, size_t start, char const *stop_chars);
-Var *parse (String word);
+Var *parse (String in, size_t *num_read);
 
-char const *const LISP_SEPARATORS = " \t\n)(";
+char const *const DELIMITER = " \t\n)(";
 
 
 
@@ -70,12 +71,17 @@ Var *tokenize (String in, size_t *chars_read)
                 /* other characters mean an atom */
                 else
                 {
-                    String word = read_until (in, i, LISP_SEPARATORS);
-                    debug  ("got '%s'", word.chars);
-                    if (word.len > 0)
-                    {
-                        i += word.len-1;
-                        symbols->list.data[symbols->list.len] = parse (word);
+                    String the_rest = mkstring (in.chars+i);
+                    if (the_rest.len > 0)
+                    {   size_t chars_read;
+
+                        symbols->list.data[symbols->list.len] =\
+                            parse (the_rest, &chars_read);
+
+                        debug ("got parse '%.*s'",
+                               chars_read,
+                               the_rest.chars);
+                        i += chars_read - 1;
                     }
                 }
                 symbols->list.len++;
@@ -108,36 +114,38 @@ finished:
 }
 
 /* parse: parse a string into a Var */
-Var *parse (String word)
+Var *parse (String in, size_t *chars_read)
 {
     Var *out = UNDEFINED;
 
-    char first_char = word.chars[0];
+    String _word = read_until (in, 0, DELIMITER);
+
+    char first_char = in.chars[0];
 
     /* Quoted values begin with ' */
     if (first_char == '\'')
-    {   debug ("quoted value '%s'", word.chars);
+    {
+        String word = read_until (in, 0, DELIMITER);
+
+        debug ("quoted value '%s'", word.chars);
         out->type = VAR_SYMBOL;
         out->sym  = mkstring (word.chars+1);
+
+        *chars_read = word.len;
     }
     /* Strings start with ", so if the word begins
      * with ", we assume it's a String. */
     else if (first_char == '"')
-    {   debug ("string '%s'", word.chars);
-        bool found_endquote = false;
+    {
+        String word = read_until (in, 1, "\"");
 
-        size_t i = 1;
-        for (; i < word.len; ++i)
-        {   if (word.chars[i] == '"')
-            {   found_endquote = true;
-                i -= 1;
-                break;
-            }
-        }
+        *chars_read = 2 + word.len;
 
-        if (found_endquote)
+        debug ("string '%s'", word.chars);
+
+        if (word.chars[word.len] != '"')
         {   out->type = VAR_STRING;
-            out->str  = mknstring (word.chars+1, i-1);
+            out->str  = word;
         }
         else
         {   return mkerr_var (EC_BAD_SYNTAX,
@@ -153,12 +161,14 @@ Var *parse (String word)
                           && (str.chars[0] == '+'\
                            || str.chars[0] == '-'\
                            || str.chars[0] == '.')))
-    else if (IS_NUMBER(word))
+    else if (IS_NUMBER(_word))
 #undef IS_NUMBER
-    {   debug ("number '%s'", word.chars);
+    {   debug ("number '%s'", _word.chars);
         char *end;
         out->type   = VAR_NUMBER;
-        out->number = strtod (word.chars, &end);
+        out->number = strtod (_word.chars, &end);
+
+        *chars_read = _word.len;
 
         /* strtod stores a pointer to the last character used
          * in conversion in `end'. If the word is a valid Number,
@@ -166,37 +176,56 @@ Var *parse (String word)
          * did not use all the characters in the word, then the
          * word must be either an Identifier or an invalid
          * Number literal */
-        if (end != word.chars + word.len)
+        if (end != _word.chars + _word.len)
         {   return mkerr_var (EC_BAD_SYNTAX,
                               "invalid Number literal '%s'",
-                              word.chars);
+                              _word.chars);
         }
     }
-    /* Booleans are represented by `#f' or `#t'
-     * for `true' and `false', respectively. */
-    else if (word.chars[0] == '#')
+    /* # directives include Booleans, Vectors, Chars, etc. */
+    else if (first_char == '#')
     {
-        out->type = VAR_BOOLEAN;
-        if (word.chars[1] == 'f')
-        {   out->boolean = false;
-        }
-        else if (word.chars[1] == 't')
+        /* Booleans are `#t', `#true', `#f', and `#false' */
+        if (stringcmp (_word, mkstring ("#t")) == 0\
+         || stringcmp (_word, mkstring ("#true")) == 0)
         {   out->boolean = true;
+            out->type = VAR_BOOLEAN;
         }
+        else if (stringcmp (_word, mkstring ("#f")) == 0\
+              || stringcmp (_word, mkstring ("#false")) == 0)
+        {   out->boolean = false;
+            out->type = VAR_BOOLEAN;
+        }
+        /* TODO: Character, Vector, ByteVector, Numbers, Labels */
         else
-        {   mkerr_var (EC_BAD_SYNTAX,
-                       "Invalid Boolean literal '%s'",
-                       word.chars);
+        {   return mkerr_var (EC_BAD_SYNTAX,
+                              "invalid # directive '%s'",
+                              _word.chars);
         }
+        *chars_read = _word.len;
     }
     /* Identifiers can be any sequence of characters, so
      * if all else fails, it must be an identifier */
-    /* TODO: identifiers in vbars (eg |hello world|) */
     else
-    {   debug ("identifier '%s'", word.chars);
+    {
         out->type = VAR_IDENTIFIER;
-        out->sym  = stringdup (word);
+
+        /* an identifier can be enclosed in vertical bars,
+         * this allows for whitespace in Identifiers */
+        if (first_char == '|')
+        {
+            String id   = read_until (in, 1, "|");
+            out->id     = id;
+            *chars_read = 2 + id.len;
+        }
+        /* no vbar, regular Identifier */
+        else
+        {   out->id     = _word;
+            *chars_read = _word.len;
+        }
+        debug ("identifier '%s'", out->id.chars);
     }
+    debug ("got %zi chars", *chars_read);
 
     return out;
 }

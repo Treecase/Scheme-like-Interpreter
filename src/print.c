@@ -88,13 +88,18 @@ int print_var (FILE *stream,
             }
             else
             {   return fprintf (stream,
-                                "id->%v",
+                                "%s->%v",
+                                v->id.chars,
                                 i);
             }
           } break;
 
         case VAR_UNDEFINED:
             return fprintf (stream, "<undefined>");
+            break;
+
+        case VAR_EMPTY:
+            return fprintf (stream, "nil");
             break;
         }
     }

@@ -2,6 +2,7 @@
  * Evaluate token lists
  *
  */
+/* TODO: tail-recursion (pg 11) */
 
 #include "eval.h"
 #include "data.h"

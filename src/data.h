@@ -47,6 +47,8 @@ typedef struct List
     struct Var **data;
 } List;
 
+List duplicate_list (List l);
+
 
 /* LISPFunction:
  *  A non-builtin function -- essentially
@@ -64,7 +66,7 @@ typedef struct LISPFunction
  */
 typedef struct BuiltIn
 {   struct Var *(*fn)(List, Environment *);
-    char *name;
+    char const *name;
 } BuiltIn;
 
 
@@ -87,6 +89,8 @@ typedef struct _Function
         FN_BUILTIN,
     } type;
 } _Function;
+
+_Function duplicate_fn (_Function f);
 
 
 #include "var.h"
