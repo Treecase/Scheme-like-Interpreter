@@ -17,8 +17,8 @@
 
 #define NOT_A_NUMBER_ERROR(arg)                 (mkerr_var (EC_INVALID_ARG, "%s -- Invalid type. %v is not a Number", __func__, arg))
 #define ARG_COUNT_MISMATCH_ERROR(requires, got) (mkerr_var (EC_INVALID_ARG,\
-                                                            (got > requires)? "%s -- Too many arguments. Max %zi, got %zi"\
-                                                                            : "%s -- Too few arguments. Min %zi, got %zi",\
+                                                            ((got) > (requires))? "%s -- Too many arguments. Max %zi, got %zi"\
+                                                                                : "%s -- Too few arguments. Min %zi, got %zi",\
                                                             __func__,\
                                                             requires,\
                                                             got))

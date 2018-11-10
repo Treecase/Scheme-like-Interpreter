@@ -24,7 +24,7 @@ typedef struct Var
         String     str;
         bool       boolean;
         _Function  fn;
-        List       list;
+        Pair       p;
         String     sym;
         Identifier id;
     };
@@ -36,7 +36,7 @@ typedef struct Var
         VAR_STRING,
         VAR_BOOLEAN,
         VAR_FUNCTION,
-        VAR_LIST,
+        VAR_PAIR,
         VAR_SYMBOL,
         VAR_IDENTIFIER,
     } type;

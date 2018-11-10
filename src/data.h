@@ -8,7 +8,7 @@
 
 #include "string.h"
 #include "error.h"
-#include "token.h"
+#include "lexer.h"
 #include "environment.h"
 
 #include <gc/gc.h>
@@ -39,15 +39,15 @@
 
 
 
-/* List:
- *  List of Vars
+/* Pair:
+ *  Pair of Vars
  */
-typedef struct List
-{   size_t       len;
-    struct Var **data;
-} List;
+typedef struct Pair
+{   struct Var *car,
+               *cdr;
+} Pair;
 
-List duplicate_list (List l);
+Pair duplicate_pair (Pair p);
 
 
 /* LISPFunction:
@@ -65,7 +65,7 @@ typedef struct LISPFunction
  *  C function pointers
  */
 typedef struct BuiltIn
-{   struct Var *(*fn)(List, Environment *);
+{   struct Var *(*fn)(Pair, Environment *);
     char const *name;
 } BuiltIn;
 
