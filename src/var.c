@@ -5,10 +5,85 @@
 
 #include "data.h"
 #include "var.h"
-#include "token.h"
 
 #include <stdlib.h>
 #include <string.h>
+
+
+
+Var *var_atom (Atom a)
+{
+    Var *new = new_var (VAR_ATOM);
+    new->a = a;
+    return new;
+}
+
+Var *var_pair (Var *car, Var *cdr)
+{
+    Var *new = new_var (VAR_PAIR);
+    new->car = car;
+    new->cdr = cdr;
+    return new;
+}
+
+Var *var_nil(void)
+{   return new_var (VAR_NIL);
+}
+Var *var_undefined(void)
+{   return new_var (VAR_UNDEFINED);
+}
+
+
+Var *var_true(void)
+{   return var_atom (atm_boolean (true));
+}
+
+Var *var_false(void)
+{   return var_atom (atm_boolean (false));
+}
+
+
+Atom atm_boolean (bool b)
+{   Atom a;
+    a.boolean = b;
+    return a;
+}
+
+Atom atm_number (double n)
+{   Atom a;
+    a.num = n;
+    return a;
+}
+
+Atom atm_str (String s)
+{   Atom a;
+    a.str = s;
+    return a;
+}
+
+Atom atm_sym (String s)
+{   Atom a;
+    a.sym = s;
+    return a;
+}
+
+Atom atm_id (Identifier i)
+{   Atom a;
+    a.id = i;
+    return a;
+}
+
+Atom atm_err (Error e)
+{   Atom a;
+    a.err = e;
+    return a;
+}
+
+Atom atm_fn (_Function f)
+{   Atom a;
+    a.fn = f;
+    return a;
+}
 
 
 
@@ -21,79 +96,56 @@ Var *new_var (enum VarType t)
     return ref;
 }
 
-/* duplicate_var: duplicate v */
-Var *duplicate_var (Var *v)
-{
-    Var *new = new_var (v->type);
-
-    switch (v->type)
-    {
-    case VAR_ERROR:
-        new->err = duplicate_err (v->err);
-        break;
-    case VAR_STRING:
-        new->str = stringdup (v->str);
-        break;
-    case VAR_LIST:
-        new->list = duplicate_list (v->list);
-        break;
-    case VAR_SYMBOL:
-        new->sym = stringdup (v->sym);
-        break;
-    case VAR_IDENTIFIER:
-        new->id = stringdup (v->id);
-        break;
-
-    case VAR_FUNCTION:
-        new->fn = duplicate_fn (v->fn);
-        break;
-
-    case VAR_NUMBER:
-        new->number = v->number;
-        break;
-    case VAR_BOOLEAN:
-        new->boolean = v->boolean;
-        break;
-
-    /* non-valued types */
-    case VAR_UNDEFINED:
-    case VAR_EMPTY:
-        break;
-    }
-
-    return new;
-}
 
 
-
-/* duplicate_list: duplicate l */
-List duplicate_list (List l)
-{
-    List new;
-    new.len = l.len;
-    new.data = GC_malloc (new.len * sizeof(*new.data));
-
-    for (size_t i = 0; i < new.len; ++i)
-    {   new.data[i] = duplicate_var (l.data[i]);
-    }
-
-    return new;
-}
-
-/* duplicate_fn: duplicate f */
-_Function duplicate_fn (_Function f)
-{
-    _Function new;
-    new.type = f.type;
-
-    if (new.type == FN_BUILTIN)
-    {   new.builtin = f.builtin;
+/* The Elementary S-functions and Predicates  */
+Var *atom (Var *x)
+{   if (x->type == VAR_ATOM)
+    {   return var_true();
     }
     else
-    {
-        new.fn = (LISPFunction){ .env =duplicate_env (f.fn.env ),
-                                 .body=duplicate_var (f.fn.body) };
+    {   return var_false();
     }
-    return new;
+}
+
+Var *eq (Var *x, Var *y)
+{
+    if (atom (x)->a.boolean  && atom (y)->a.boolean)
+    {
+        if (memcmp (x, y, sizeof(*x)) == 0)
+        {   return var_true();
+        }
+        else
+        {   return var_false();
+        }
+    }
+    else
+    {   return var_undefined();
+    }
+
+}
+
+Var *car (Var *x)
+{
+    if (x->type == VAR_PAIR)
+    {   return x->p.car;
+    }
+    else
+    {   return var_undefined();
+    }
+}
+
+Var *cdr (Var *x)
+{
+    if (x->type == VAR_PAIR)
+    {   return x->p.cdr;
+    }
+    else
+    {   return var_undefined();
+    }
+}
+
+Var *cons (Var *x, Var *y)
+{   return var_pair (x, y);
 }
 
