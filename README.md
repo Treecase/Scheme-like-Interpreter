@@ -9,7 +9,7 @@ Currently supports:
  * `define`
  * `lambda`
  * `if`
- * `set!` 
+ * `set!`
 
 
 For example, to square 10, you might do:  
@@ -34,7 +34,3 @@ Conditionals:
  \> (if #t 'true 'false)  
  : (true)  
   
-  
-  
-*Note:* References to page numbers within the source code (eg "/\* TODO: support dotted pair notation **(pg 41)** \*/") refer to page numbers of [r7rs.pdf](https://bitbucket.org/cowan/r7rs/raw/4c27517de187142ad2cf4bcd8cb9199ae1e48c09/rnrs/r7rs.pdf)
-

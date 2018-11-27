@@ -3,6 +3,7 @@
  *
  */
 
+#include "data.h"
 #include "lexer.h"
 
 #include <ctype.h>
@@ -12,8 +13,8 @@
 
 
 
-char const *const special_char = ".()";
-char const *const special_nonnumeric_char = "()";
+char const *const special_char = ".()|";
+char const *const special_nonnumeric_char = "()|";
 
 int is_special (char ch);
 int is_special_nonnumeric (char ch);
@@ -58,10 +59,12 @@ Token *lex (char const *input)
                 output[output_len].type = TOK_DOT;
                 break;
 
+            case '|':
+                output[output_len].type = TOK_VBAR;
+                break;
+
             default:
-                fprintf (stderr, "%s Error -- `%c' is not a "
-                                 "special character\n",
-                         __func__, ch);
+                error ("`%c' is not a special character\n", ch);
                 break;
             }
 
@@ -131,6 +134,9 @@ void print_token (Token t)
         break;
     case TOK_DOT:
         printf ("DOT");
+        break;
+    case TOK_VBAR:
+        printf ("VBAR");
         break;
     case TOK_END:
         printf ("<END>(hey, what's this doing here?)");

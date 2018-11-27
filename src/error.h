@@ -7,6 +7,13 @@
 #define __ERROR_H
 
 
+#ifdef _DEBUG_BUILD
+#define mkerr_var(t, flavour, ...)  (mkerr_var_ (t, "%s:%i: " flavour, __FILE__, __LINE__, ##__VA_ARGS__))
+#else
+#define mkerr_var(t, flavour, ...)  (mkerr_var_ (t, flavour, ##__VA_ARGS__))
+#endif
+
+
 /* Errcode:
  *  Error types
  */
@@ -31,7 +38,7 @@ typedef struct Error
 
 char const *err_msg (Error e);
 Error mkerr (Errcode t, char *flavour, ...);
-struct Var *mkerr_var (Errcode t, char *flavour, ...);
+struct Var *mkerr_var_ (Errcode t, char *flavour, ...);
 Error duplicate_err (Error e);
 
 #endif

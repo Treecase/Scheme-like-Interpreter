@@ -10,6 +10,9 @@
 #include <string.h>
 
 
+int atomcmp (Atom a, Atom b);
+
+
 
 Var *var_atom (Atom a)
 {
@@ -21,8 +24,8 @@ Var *var_atom (Atom a)
 Var *var_pair (Var *car, Var *cdr)
 {
     Var *new = new_var (VAR_PAIR);
-    new->car = car;
-    new->cdr = cdr;
+    new->p.car = car;
+    new->p.cdr = cdr;
     return new;
 }
 
@@ -35,52 +38,59 @@ Var *var_undefined(void)
 
 
 Var *var_true(void)
-{   return var_atom (atm_boolean (true));
+{   return var_atom (atm_bool (true));
 }
 
 Var *var_false(void)
-{   return var_atom (atm_boolean (false));
+{   return var_atom (atm_bool (false));
 }
 
 
-Atom atm_boolean (bool b)
+Atom atm_bool (bool b)
 {   Atom a;
+    a.type = ATM_BOOLEAN;
     a.boolean = b;
     return a;
 }
 
-Atom atm_number (double n)
+Atom atm_num (double n)
 {   Atom a;
+    a.type = ATM_NUMBER;
     a.num = n;
     return a;
 }
 
 Atom atm_str (String s)
 {   Atom a;
+    a.type = ATM_STRING;
     a.str = s;
     return a;
 }
 
 Atom atm_sym (String s)
 {   Atom a;
+    a.type = ATM_SYMBOL;
     a.sym = s;
     return a;
 }
 
 Atom atm_id (Identifier i)
 {   Atom a;
+    a.type = ATM_IDENTIFIER;
     a.id = i;
     return a;
 }
 
 Atom atm_err (Error e)
 {   Atom a;
+    a.type = ATM_ERROR;
     a.err = e;
     return a;
 }
 
 Atom atm_fn (_Function f)
 {   Atom a;
+    a.type = ATM_FUNCTION;
     a.fn = f;
     return a;
 }
@@ -92,60 +102,6 @@ Var *new_var (enum VarType t)
 {
     Var *ref  = GC_malloc (sizeof(*ref));
     ref->type = t;
-
     return ref;
-}
-
-
-
-/* The Elementary S-functions and Predicates  */
-Var *atom (Var *x)
-{   if (x->type == VAR_ATOM)
-    {   return var_true();
-    }
-    else
-    {   return var_false();
-    }
-}
-
-Var *eq (Var *x, Var *y)
-{
-    if (atom (x)->a.boolean  && atom (y)->a.boolean)
-    {
-        if (memcmp (x, y, sizeof(*x)) == 0)
-        {   return var_true();
-        }
-        else
-        {   return var_false();
-        }
-    }
-    else
-    {   return var_undefined();
-    }
-
-}
-
-Var *car (Var *x)
-{
-    if (x->type == VAR_PAIR)
-    {   return x->p.car;
-    }
-    else
-    {   return var_undefined();
-    }
-}
-
-Var *cdr (Var *x)
-{
-    if (x->type == VAR_PAIR)
-    {   return x->p.cdr;
-    }
-    else
-    {   return var_undefined();
-    }
-}
-
-Var *cons (Var *x, Var *y)
-{   return var_pair (x, y);
 }
 

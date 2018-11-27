@@ -16,6 +16,7 @@
  *  | (<expr> <expr>... . <expr>) ==> (<expr>.(...(<expr.<expr>)...))
  *
  */
+/* TODO: error hardening */
 
 #include "parser.h"
 #include "lexer.h"
@@ -23,29 +24,36 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <setjmp.h>
 
 
+#ifdef _DEBUG_BUILD
 #define rprintf(format, ...)   printf ("%*s" format, depth, "", ##__VA_ARGS__);
+#else
+#define rprintf(format, ...)
+#endif
 #define DEPTH_INC   4
 
+
+static jmp_buf err_context;
+static bool error_occurred = false;
+static Var *errmsg = NULL;
 
 static int depth = 0;
 
 Token const *tokens = NULL;
 
 Token next(void)
-{   if (tokens->type != TOK_END)
-    {   tokens++;
-        rprintf ("next -- '%s'\n", TOKEN_TYPES[tokens->type]);
+{   tokens++;
+    if (tokens->type != TOK_END)
+    {   rprintf ("next -- '%s'\n", TOKEN_TYPES[tokens->type]);
     }
     else
-    {   fprintf (stderr, "Parser: End of Input\n");
-        exit (1);
+    {   debug ("Parser: End of Input\n");
     }
     return *tokens;
 }
-
-#define peek()  (*tokens)
 
 
 Var *parse_atom(void);
@@ -60,7 +68,29 @@ Var *parse (Token const *input)
 {
     tokens = input;
     depth = -DEPTH_INC;
-    return parse_expr();
+    Var *result = NULL;
+
+    error_occurred = false;
+    errmsg = NULL;
+
+    /* setup a jump point for if parse_expr fails */
+    if (!setjmp (err_context))
+    {   result = parse_expr();
+    }
+    /* if an error occurred, longjmp will jump here */
+    else
+    {   if (!error_occurred)
+        {   error ("an error occurred!");
+            error_occurred = true;
+            result = errmsg;
+        }
+    }
+    /*  */
+    if (!error_occurred)
+    {   error_occurred = true;
+        longjmp (err_context, 1);
+    }
+    return result;
 }
 
 
@@ -74,24 +104,35 @@ Var *parse_atom(void)
     {
         char *end = NULL;
         double n = strtod (t.value, &end);
+
+        /* Number */
         if (*end == '\0')
-        {   v = new_atom_num (n);
+        {   v = var_atom (atm_num (n));
         }
+        /* Boolean */
+        else if (t.value[0] == '#')
+        {   v = var_atom (atm_bool (t.value[1] == 't'));
+        }
+        /* String */
+        else if (t.value[0] == '"' && strlen (t.value) > 1 && t.value[strlen (t.value)-1] == '"')
+        {   v = var_atom (atm_str (mknstring (t.value+1, strlen (t.value)-2)));
+        }
+        /* Symbol */
+        else if (t.value[0] == '\'')
+        {   v = var_atom (atm_sym (mkstring (t.value+1)));
+        }
+        /* Identifier */
         else
-        {
-            v = new_atom_iden (t.value);
+        {   v = var_atom (atm_id (mkstring (t.value)));
         }
 
-        rprintf ("%s: got '", __func__);
-        print_value (v);
-        printf ("'\n");
+        rprintf ("%s: got '%v'\n", __func__, v);
 
         next();
     }
     else
-    {   fprintf (stderr, "Error: %s -- got bad token type '%s'\n",
-                 __func__, TOKEN_TYPES[t.type]);
-        v = new_nil();
+    {   error ("got bad token type '%s'", TOKEN_TYPES[t.type]);
+        v = var_nil();
         exit(1);
     }
 
@@ -121,7 +162,7 @@ Var *parse_expr(void)
             {
                 rprintf ("%s: NIL\n", __func__);
 
-                value = new_nil();
+                value = var_nil();
             }
             /* `(<expr>' */
             else
@@ -132,27 +173,41 @@ Var *parse_expr(void)
 
                 rprintf ("%s: `(<expr> ...'\n", __func__);
 
-                value = new_pair (expr1, NULL);
+                value = var_pair (expr1, NULL);
                 Var *expr_n = value;
 
-                while (tokens->type != TOK_RPAREN && tokens->type != TOK_DOT)
+                while ((tokens->type & (TOK_RPAREN | TOK_DOT | TOK_END)) == 0)
                 {
-                    expr_n->p.cdr = new_pair (NULL, NULL);
+                    expr_n->p.cdr = var_pair (NULL, NULL);
 
                     Var *tmp = expr_n->p.cdr;
 
                     expr_n = tmp;
                     expr_n->p.car = parse_expr();
                 }
+                if (tokens->type == TOK_END)
+                {   errmsg = mkerr_var (EC_GENERAL,
+                                        "parse error -- hit end of "
+                                        "input before pattern was "
+                                        "matched");
+                    longjmp (err_context, 1);
+                }
 
                 /* `(<expr1>... <expr_n>)' */
                 if (tokens->type == TOK_RPAREN)
-                {   expr_n->p.cdr = new_nil();
+                {   expr_n->p.cdr = var_nil();
                 }
-                /* `(<expr1>... . <expr_n>)' */
+                /* `(<expr1>... . <expr_n>' */
                 else if (tokens->type == TOK_DOT)
                 {   next();
                     expr_n->p.cdr = parse_expr();
+                    if (tokens->type != TOK_RPAREN)
+                    {   errmsg = mkerr_var (EC_GENERAL,
+                                            "parse error -- hit end "
+                                            "of input before pattern"
+                                            " was matched");
+                        longjmp (err_context, 1);
+                    }
                 }
                 /* ??? */
                 else
@@ -160,6 +215,37 @@ Var *parse_expr(void)
                 }
             }
             next();
+        }
+        /* `|' */
+        else if (tokens->type == TOK_VBAR)
+        {
+            next();
+
+            Token const *begin = tokens;
+
+            /* | <atom> | */
+            while ((tokens->type & (TOK_VBAR | TOK_END)) == 0)
+            {   next();
+            }
+            if (tokens->type == TOK_END)
+            {   errmsg = mkerr_var (EC_GENERAL, "parser error -- "
+                                    "hit end of input before "
+                                    "pattern was matched");
+                longjmp (err_context, 1);
+            }
+
+            String id = NULL_STRING;
+            for (int i = 0; begin+i < tokens; ++i)
+            {
+                if (id.len > 0)
+                {   id = stringapp (id, mkstring (" "));
+                }
+                debug ("%i = '%s'", i, (begin+i)->value);
+                String tmp = mkstring ((begin+i)->value);
+                debug ("%i => '%s'", i, tmp.chars);
+                id = stringapp (id, tmp);
+            }
+            value = var_atom (atm_id (id));
         }
         /* <atom> */
         else if (tokens->type == TOK_TOKEN)
@@ -170,13 +256,10 @@ Var *parse_expr(void)
     }
     /* EOI */
     else
-    {
-        rprintf ("END OF INPUT\n");
+    {   rprintf ("END OF INPUT\n");
     }
 
-    rprintf ("%s: got '", __func__);
-    print_value (value);
-    printf ("'\n");
+    rprintf ("%s: got '%v'\n", __func__, value);
 
     depth -= DEPTH_INC;
     return value;

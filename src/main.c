@@ -8,10 +8,12 @@
  */
 
 #include "string.h"
-#include "token.h"
+#include "lexer.h"
+#include "parser.h"
 #include "eval.h"
 #include "print.h"
 #include "global-state.h"
+#include "builtins.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -23,18 +25,14 @@
 
 
 
-/* Globals */
-Environment *local_env  = NULL;
-
-
 char const *const PROMPT = "> ";
-Environment *global_env = { 0 };
-
 
 String getinput (char const *prompt);
 void init_readline(void);
 char **lisp_command_complete (char const *text, int start, int end);
 char *lisp_command_generator (char const *text, int state);
+
+Var *get_default_env(void);
 
 
 
@@ -51,10 +49,9 @@ int main (int argc, char *argv[]) {
     init_print();
 
 
-    /* the global_env contains program-scope variable names,
-     * (eg +, -, define, etc.) */
-    global_env = get_default_environment();
-    local_env  = global_env;
+    /* the default_env contains the primitive functions,
+     * such as `+', `define', `if', etc. */
+    Var *default_env = get_default_env();
 
 
     /* Loop: read input from the user, evaluate it,
@@ -66,22 +63,23 @@ int main (int argc, char *argv[]) {
     while (input.chars != NULL) {
 
         /* convert user's input to a list of tokens */
-        Var *tokens = tokenize (input, NULL);
+        Token *tokens = lex (input.chars);
         debug ("done tokenizing\n");
 
-        if (tokens != NULL && tokens->list.len != 0)
+        if (tokens != NULL)
         {
-            debug ("got '%v'", tokens);
+            //for (size_t i = 0; tokens[i].type != TOK_END; ++i)
+            //{
+            //    printf ("got '");
+            //    print_token (tokens[i]);
+            //    printf ("'\n");
+            //}
 
-            /* Eval: evaluate the tokens, stuffing
-             *       the results into a list */
-            Var *result = new_var (VAR_LIST);
-            result->list.len  = tokens->list.len;
-            result->list.data = GC_malloc (result->list.len * sizeof(*result->list.data));
+            /* Eval: evaluate the tokens */
+            Var *parsed = parse (tokens);
+            debug ("parsed '%v'", parsed);
 
-            for (size_t i = 0; i < tokens->list.len; ++i)
-            {   result->list.data[i] = eval (tokens->list.data[i], global_env);
-            }
+            Var *result = eval (parsed, default_env);
 
             /* Print: print the resulting eval list */
             if (printf (": %v\n", result) == -1)
@@ -150,14 +148,56 @@ char *lisp_command_generator (char const *text, int state)
         len = strlen (text);
     }
 
-    while (i < local_env->len)
-    {   /* TODO: search through all Environments for completions */
-        i += 1;
-        char *str = local_env->names[i-1].chars;
-        if (strncasecmp (str, text, len) == 0)
-        {   return strdup (str);
-        }
-    }
+    /* TODO: search through environments for completions */
     return NULL;
+}
+
+
+
+struct bi
+{
+    char *id;
+    _Function fn;
+};
+
+#define BUILTIN(alias, fnname)  \
+    { .id=alias,\
+      .fn={ .type   =FN_BUILTIN,\
+            .builtin={ .fn  =_builtin_ ## fnname,\
+                       .name=alias\
+    }}}
+
+static const struct bi builtins[] =
+ {
+    BUILTIN("+", add),
+    BUILTIN("-", sub),
+    BUILTIN("*", mul),
+    BUILTIN("/", div),
+
+    BUILTIN("if", if),
+
+    BUILTIN("lambda", lambda),
+    BUILTIN("define", define),
+
+    BUILTIN("set!", set),
+ };
+#undef BUILTIN
+
+/* get_default_env: get the default environment */
+Var *get_default_env(void)
+{
+    Var *env = var_nil();
+
+    for (size_t i = 0; i < sizeof(builtins)/sizeof(*builtins); ++i)
+    {
+        Var *fn = var_atom (atm_fn (builtins[i].fn));
+        Var *fnname = var_atom (atm_id (mkstring (builtins[i].id)));
+        Var *fnpair = var_pair (fnname, fn);
+        env = var_pair (fnpair, env);
+    }
+
+    debug ("default_env ==> %v", env);
+
+    return env;
 }
 

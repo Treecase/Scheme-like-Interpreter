@@ -9,7 +9,6 @@
 #include "string.h"
 #include "error.h"
 #include "lexer.h"
-#include "environment.h"
 
 #include <gc/gc.h>
 
@@ -24,15 +23,17 @@
 
 /* NOTE: this is so GCC ignores the unknown format
  * errors caused by the custom `%v' format */
+/* FIXME: this could cause some headaches... consider removing it if
+ * neccessary */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat="
 #pragma GCC diagnostic ignored "-Wformat-extra-args"
 
-#define fatal(format, ...)  ({  fprintf (stderr, format "\n", ##__VA_ARGS__); exit (EXIT_FAILURE);  })
-#define error(format, ...)  ({  fprintf (stderr, format "\n", ##__VA_ARGS__);   })
+#define fatal(format, ...)  ({  fprintf (stderr, "Fatal: %s -- " format "\n", __func__, ##__VA_ARGS__); exit (EXIT_FAILURE);  })
+#define error(format, ...)  ({  fprintf (stderr, "Error: %s -- " format "\n", __func__, ##__VA_ARGS__);   })
 
 #ifdef _DEBUG_BUILD
-#define debug(format, ...)  ({  fprintf (DEBUG_FILE, format "\n", ##__VA_ARGS__);   })
+#define debug(format, ...)  ({  fprintf (DEBUG_FILE, "%s: " format "\n", __func__, ##__VA_ARGS__);   })
 #else
 #define debug(format, ...)
 #endif
@@ -47,16 +48,14 @@ typedef struct Pair
                *cdr;
 } Pair;
 
-Pair duplicate_pair (Pair p);
-
 
 /* LISPFunction:
  *  A non-builtin function -- essentially
  *  just a saved token list
  */
 typedef struct LISPFunction
-{   struct Var  *body;
-    Environment *env;
+{   struct Var *body;
+    struct Var *env;
 } LISPFunction;
 
 
@@ -65,7 +64,7 @@ typedef struct LISPFunction
  *  C function pointers
  */
 typedef struct BuiltIn
-{   struct Var *(*fn)(Pair, Environment *);
+{   struct Var *(*fn)(struct Var *argv, struct Var *env);
     char const *name;
 } BuiltIn;
 

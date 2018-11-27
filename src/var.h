@@ -17,7 +17,7 @@
 typedef struct Atom
 {   union
     {   bool       boolean;
-        double     number;
+        double     num;
         String     str;
         String     sym;
         Identifier id;
@@ -54,7 +54,6 @@ typedef struct Var
 
 
 Var *new_var (enum VarType t);
-Var *duplicate_var (Var *v);
 
 Var *var_atom (Atom a);
 Var *var_pair (Var *car, Var *cdr);
@@ -64,22 +63,13 @@ Var *var_undefined(void);
 Var *var_true(void);
 Var *var_false(void);
 
-Atom atm_boolean (bool b);
-Atom atm_number (double n);
+Atom atm_bool (bool b);
+Atom atm_num (double n);
 Atom atm_str (String s);
 Atom atm_sym (String s);
 Atom atm_id (Identifier i);
 Atom atm_err (Error e);
 Atom atm_fn (_Function f);
-
-
-
-Var *atom (Var *x);
-Var *eq (Var *x, Var *y);
-
-Var *car (Var *x);
-Var *cdr (Var *x);
-Var *cons (Var *x, Var *y);
 
 
 #endif

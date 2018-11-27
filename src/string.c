@@ -58,13 +58,31 @@ String stringdup (String s)
 {   return mkstring (s.chars);
 }
 
-/* stringcmp: compare two strings */
+/* stringapp: append b to a */
+String stringapp (String a, String b)
+{
+    String new;
+    new.len   = a.len + b.len;
+    new.size  = new.len+1;
+    new.chars = GC_malloc (new.size);
+
+    if (a.chars != NULL)
+    {   strncpy (new.chars, a.chars, a.len);
+    }
+    if (b.chars != NULL)
+    {   strncpy (new.chars + a.len, b.chars, b.len);
+    }
+    new.chars[new.len] = '\0';
+
+    return new;
+}
+
+/* stringcmp: same as strcmp, but for Strings */
 int stringcmp (String a, String b)
 {
     if (a.chars != NULL && b.chars != NULL)
     {
         size_t n = (a.len > b.len)? a.len : b.len;
-
         return strncmp (a.chars, b.chars, n);
     }
     else

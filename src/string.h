@@ -32,6 +32,7 @@ String mkstring (char const *str);
 String mknstring (char const *str, size_t n);
 
 String stringdup (String str);
+String stringapp (String a, String b);
 
 int stringcmp (String a, String b);
 

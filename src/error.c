@@ -65,13 +65,12 @@ Error mkerr (Errcode t, char *flavour, ...)
 }
 
 /* mkerr_var: create an error Var with type t */
-Var *mkerr_var (Errcode t, char *flavour, ...)
+Var *mkerr_var_ (Errcode t, char *flavour, ...)
 {
     va_list ap;
     va_start (ap, flavour);
 
-    Var *r = new_var (VAR_ERROR);
-    r->err = _mkerr_va (t, flavour, ap);
+    Var *r = var_atom (atm_err (_mkerr_va (t, flavour, ap)));
 
     va_end (ap);
     return r;
