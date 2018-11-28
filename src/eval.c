@@ -39,7 +39,13 @@ Var *apply (Var *f, Var *args, Var *env)
     else
     {   /* lispfn */
         Var *p = pair_up (f->a.fn.fn.env, args);
-        return eval (f->a.fn.fn.body, cons (car (p), env));
+        Var *tmpenv = cons (car (p), env);
+
+        for (Var *t = cdr (p); t->type != VAR_NIL; t = cdr (t))
+        {   tmpenv = cons ( car (t), tmpenv );
+        }
+        debug ("applying %v(%v) with %v", f, args, tmpenv);
+        return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
     }
 }
 
@@ -53,7 +59,9 @@ Var *pair_up (Var *a, Var *b)
     {   return var_nil();
     }
     else
-    {   return cons (cons (car (a), car (b)),
+    {
+        debug ("pairing %v  and  %v", car (a), car (b));
+        return cons (cons (car (a), car (b)),
                      pair_up (cdr (a), cdr (b)));
     }
 }

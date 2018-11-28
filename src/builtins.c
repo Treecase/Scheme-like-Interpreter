@@ -83,10 +83,12 @@ MKBUILTIN(div)
  * and returns the result of evaluating <body> with these arguments */
 MKBUILTIN(lambda)
 {
+    Var *formals = car (argv);
+    Var *body    = car (cdr (argv));
 
     LISPFunction f;
-    f.env  = car (argv);
-    f.body = car (cdr (argv));
+    f.env  = formals;
+    f.body = body;
 
     _Function fn;
     fn.type = FN_LISPFN;
@@ -122,14 +124,14 @@ MKBUILTIN(define)
  * followed if <test> DOES NOT evaluate to `#f' */
 MKBUILTIN(if)
 {
-    Var *test       = eval (car (argv), env),
-        *consequent = eval (car (cdr (argv)), env),
-        *alternate  = eval (car (car (cdr (argv))), env);
+    Var *test       = car (argv),
+        *consequent = car (cdr (argv)),
+        *alternate  = car (cdr (cdr (argv)));
 
     debug ("test: %v  consequent: %v  alternate: %v",
            test, consequent, alternate);
 
-    if (test->type == VAR_ATOM && test->a.type == ATM_BOOLEAN && test->a.boolean == false)
+    if (eq (eval (test, env), var_false())->a.boolean == true)
     {   return eval (alternate, env);
     }
     else
@@ -146,8 +148,11 @@ MKBUILTIN(set)
 {
     bool found_id = false;
 
+    Var *variable   = car (argv);
+    Var *expression = eval (car (cdr (argv)), env);
+
     for (Var *c = env; c->type != VAR_NIL; c = cdr (c))
-    {   if (stringcmp (car (car (c))->a.id, car (argv)->a.id) == 0)
+    {   if (eq (car (car (c)), variable)->a.boolean)
         {
             found_id = true;
             c->p.car->p.cdr = car (cdr (argv));
