@@ -44,10 +44,36 @@ static int depth = 0;
 
 Token const *tokens = NULL;
 
+
+
+/* token_type: returns a string containing the name of t's type */
+static char *token_types (enum TokenType t)
+{
+    switch (t)
+    {
+    case TOK_TOKEN:
+        return "TOKEN";
+    case TOK_LPAREN:
+        return "LPAREN";
+    case TOK_RPAREN:
+        return "RPAREN";
+    case TOK_DOT:
+        return "DOT";
+    case TOK_VBAR:
+        return "VBAR";
+    case TOK_END:
+        return "END";
+    }
+    return "???";
+}
+
+
+
 Token next(void)
 {   tokens++;
     if (tokens->type != TOK_END)
-    {   rprintf ("next -- '%s'\n", TOKEN_TYPES[tokens->type]);
+    {
+        rprintf ("next -- '%s'\n", token_types (tokens->type));
     }
     else
     {   debug ("Parser: End of Input\n");
@@ -131,7 +157,7 @@ Var *parse_atom(void)
         next();
     }
     else
-    {   error ("got bad token type '%s'", TOKEN_TYPES[t.type]);
+    {   error ("got bad token type '%s'", token_types (t.type));
         v = var_nil();
         exit(1);
     }
@@ -219,13 +245,15 @@ Var *parse_expr(void)
         /* `|' */
         else if (tokens->type == TOK_VBAR)
         {
+            rprintf ("%s: `|'\n", __func__);
             next();
 
             Token const *begin = tokens;
 
             /* | <atom> | */
             while ((tokens->type & (TOK_VBAR | TOK_END)) == 0)
-            {   next();
+            {   rprintf ("<atom> ==> %s\n", tokens->value);
+                next();
             }
             if (tokens->type == TOK_END)
             {   errmsg = mkerr_var (EC_GENERAL, "parser error -- "
@@ -234,23 +262,24 @@ Var *parse_expr(void)
                 longjmp (err_context, 1);
             }
 
+            rprintf ("%s: got `| <atom> |'\n", __func__);
             String id = NULL_STRING;
             for (int i = 0; begin+i < tokens; ++i)
             {
                 if (id.len > 0)
                 {   id = stringapp (id, mkstring (" "));
                 }
-                debug ("%i = '%s'", i, (begin+i)->value);
                 String tmp = mkstring ((begin+i)->value);
-                debug ("%i => '%s'", i, tmp.chars);
+                rprintf ("%i => '%s'\n", i, tmp.chars);
                 id = stringapp (id, tmp);
             }
             value = var_atom (atm_id (id));
+            next();
         }
         /* <atom> */
         else if (tokens->type == TOK_TOKEN)
         {
-            rprintf ("%s: <atom>\n",__func__);
+            rprintf ("%s: <atom>\n", __func__);
             value = parse_atom();
         }
     }

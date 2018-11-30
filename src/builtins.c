@@ -155,7 +155,7 @@ MKBUILTIN(set)
     {   if (eq (car (car (c)), variable)->a.boolean)
         {
             found_id = true;
-            c->p.car->p.cdr = car (cdr (argv));
+            c->p.car->p.cdr = expression;
             break;
         }
     }

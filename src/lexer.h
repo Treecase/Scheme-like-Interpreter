@@ -13,7 +13,7 @@
  */
 typedef struct Token
 {   char *value;
-    enum
+    enum TokenType
     {   TOK_TOKEN  = 0x01,
         TOK_LPAREN = 0x02,
         TOK_RPAREN = 0x04,
@@ -23,13 +23,6 @@ typedef struct Token
     } type;
 } Token;
 
-static char const *const TOKEN_TYPES[] =
-  { "TOKEN",
-    "LPAREN",
-    "RPAREN",
-    "DOT",
-    "END"
-  };
 
 
 Token *lex (char const *input);
