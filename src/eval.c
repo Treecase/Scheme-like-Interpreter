@@ -6,7 +6,6 @@
 
 #include "eval.h"
 #include "data.h"
-#include "global-state.h"
 #include "builtins.h"
 
 #include <ctype.h>

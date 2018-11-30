@@ -4,7 +4,6 @@
  */
 
 #include "print.h"
-#include "global-state.h"
 
 #include <stdio.h>
 #include <printf.h>

@@ -2,10 +2,10 @@
 An interpreter for a Scheme-like language.  
   
   
-Currently supports:  
+Currently supports:
  * Number, String, and Boolean literals
  * Identifiers (including vertical bar notation)
- * Primitive math operations (ie + - / \*)  
+ * Primitive math operations (ie `+ - / *`)
  * `define`
  * `lambda`
  * `if`
@@ -13,24 +13,32 @@ Currently supports:
 
 
 For example, to square 10, you might do:  
- \> (\* 10 10)  
- : (100)  
+```Scheme
+> (* 10 10)
+: 100
+```
 
 And to define a variable:  
- \> (define a 10)  
- : (\<undefined\>)  
- \> (\* a a)  
- : (100)  
+```Scheme
+> (define a 10)
+: <undefined>
+> (* a a)
+: 100
+```
 
 Defining a function:  
- \> (define x (lambda (a b) (\* a b)))  
- : (\<undefined\>)  
- \> (x 10 10)  
- : (100)  
+```Scheme
+> (define x (lambda (a b) (* a b)))
+: <undefined>
+> (x 10 10)
+: 100
+```
 
 Conditionals:  
- \> (if #f 'true 'false)  
- : (false)  
- \> (if #t 'true 'false)  
- : (true)  
-  
+```Scheme
+> (if #f 'true 'false)
+: 'false
+> (if #t 'true 'false)
+: 'true
+```
+

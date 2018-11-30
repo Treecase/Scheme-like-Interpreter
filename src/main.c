@@ -12,7 +12,6 @@
 #include "parser.h"
 #include "eval.h"
 #include "print.h"
-#include "global-state.h"
 #include "builtins.h"
 
 #include <errno.h>
