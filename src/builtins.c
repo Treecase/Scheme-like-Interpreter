@@ -7,7 +7,6 @@
  * NOTE: MKBUILTIN returns `Var *_builtin_[argument] (size_t argc, Var **argv, Environment env)
  *
  */
-/* TODO: error checking */
 
 #define _NO_UNDEF_MKDEFINE
 #include "builtins.h"
@@ -17,12 +16,16 @@
 #include <stdlib.h>
 
 #define NOT_A_NUMBER_ERROR(arg)                 (mkerr_var (EC_INVALID_ARG, "%s -- Invalid type. %v is not a Number", __func__, arg))
-#define ARG_COUNT_MISMATCH_ERROR(requires, got) (mkerr_var (EC_INVALID_ARG,\
-                                                            ((got) > (requires))? "%s -- Too many arguments. Max %zi, got %zi"\
-                                                                                : "%s -- Too few arguments. Min %zi, got %zi",\
-                                                            __func__,\
-                                                            requires,\
-                                                            got))
+#define ARG_COUNT_MISMATCH_ERROR(requires, got) (((got) > (requires))? mkerr_var (EC_INVALID_ARG,\
+                                                                                  "%s -- Too many arguments. Max %zi, got %zi",\
+                                                                                  __func__,\
+                                                                                  requires,\
+                                                                                  got)\
+                                                                     : mkerr_var (EC_INVALID_ARG,\
+                                                                                  "%s -- Too few arguments. Min %zi, got %zi",\
+                                                                                  __func__,\
+                                                                                  requires,\
+                                                                                  got))
 #define GENERAL_FAILURE_ERROR()                 (mkerr_var (EC_GENERAL, "%s -- ???", __func__))
 
 
@@ -30,50 +33,120 @@
 /* add: given a list (n1 n2 ... nN), returns the sum of these */
 MKBUILTIN(add)
 {
-    double sum = eval (car (argv), env)->a.num;
-
-    for (Var *n = argv->p.cdr; n->type != VAR_NIL; n = n->p.cdr)
+    if (argv->type != VAR_NIL)
     {
-        sum += eval (car (n), env)->a.num;
+        double sum = 0;
+
+        for (Var *n = argv; n->type != VAR_NIL; n = n->p.cdr)
+        {
+            Var *num = eval (car (n), env);
+
+            if (num->type == VAR_ATOM && num->a.type == ATM_NUMBER)
+            {   sum += num->a.num;
+            }
+            else
+            {   return NOT_A_NUMBER_ERROR(num);
+            }
+        }
+        return var_atom (atm_num (sum));
     }
-    return var_atom (atm_num (sum));
+    return ARG_COUNT_MISMATCH_ERROR(1, 0);
 }
 
 /* sub: Subtraction. Can take infinite arguments
  *  NOTE: Also supports negation, ie (- 1) ===> -1  */
 MKBUILTIN(sub)
 {
-    double difference = eval (car (argv), env)->a.num;
-
-    for (Var *n = argv->p.cdr; n->type != VAR_NIL; n = n->p.cdr)
+    if (argv->type != VAR_NIL)
     {
-        difference -= eval (car (n), env)->a.num;
+        Var *first = eval (car (argv), env);
+        if (first->type == VAR_ATOM && first->a.type == ATM_NUMBER)
+        {
+            if (cdr (argv)->type != VAR_NIL)
+            {
+                double difference = first->a.num;
+
+                for (Var *n = argv->p.cdr; n->type != VAR_NIL; n = n->p.cdr)
+                {
+                    Var *num = eval (car (n), env);
+
+                    if (num->type == VAR_ATOM && num->a.type == ATM_NUMBER)
+                    {   difference -= num->a.num;
+                    }
+                    else
+                    {   return NOT_A_NUMBER_ERROR(num);
+                    }
+                }
+                return var_atom (atm_num (difference));
+            }
+            else
+            {   return var_atom (atm_num (-first->a.num));
+            }
+        }
+        else
+        {   return NOT_A_NUMBER_ERROR(first);
+        }
     }
-    return var_atom (atm_num (difference));
+    return ARG_COUNT_MISMATCH_ERROR(1, 0);
 }
 
 /* mul: Multiplication. Can take infinite arguments */
 MKBUILTIN(mul)
 {
-    double product = eval (car (argv), env)->a.num;
-
-    for (Var *n = argv->p.cdr; n->type != VAR_NIL; n = n->p.cdr)
+    if (argv->type != VAR_NIL)
     {
-        product *= eval (car (n), env)->a.num;
+        double product = 1;
+
+        for (Var *n = argv; n->type != VAR_NIL; n = n->p.cdr)
+        {
+            Var *num = eval (car (n), env);
+
+            if (num->type == VAR_ATOM && num->a.type == ATM_NUMBER)
+            {   product *= num->a.num;
+            }
+            else
+            {   return NOT_A_NUMBER_ERROR(num);
+            }
+        }
+        return var_atom (atm_num (product));
     }
-    return var_atom (atm_num (product));
+    return ARG_COUNT_MISMATCH_ERROR(1, 0);
 }
 
 /* div: Division. Can take infinite arguments */
 MKBUILTIN(div)
 {
-    double quotient = eval (car (argv), env)->a.num;
-
-    for (Var *n = argv->p.cdr; n->type != VAR_NIL; n = n->p.cdr)
+    if (argv->type != VAR_NIL)
     {
-        quotient /= eval (car (n), env)->a.num;
+        Var *first = eval (car (argv), env);
+
+        if (first->type == VAR_ATOM && first->a.type == ATM_NUMBER)
+        {
+            if (cdr (argv)->type != VAR_NIL)
+            {
+                double quotient = first->a.num;
+
+                for (Var *n = argv->p.cdr; n->type != VAR_NIL; n = n->p.cdr)
+                {
+                    Var *num = eval (car (n), env);
+                    if (num->type == VAR_ATOM && num->a.type == ATM_NUMBER)
+                    {   quotient /= num->a.num;
+                    }
+                    else
+                    {   return NOT_A_NUMBER_ERROR(num);
+                    }
+                }
+                return var_atom (atm_num (quotient));
+            }
+            else
+            {   return var_atom (atm_num (1 / first->a.num));
+            }
+        }
+        else
+        {   return NOT_A_NUMBER_ERROR(first);
+        }
     }
-    return var_atom (atm_num (quotient));
+    return ARG_COUNT_MISMATCH_ERROR(1, 0);
 }
 
 
@@ -83,34 +156,57 @@ MKBUILTIN(div)
  * and returns the result of evaluating <body> with these arguments */
 MKBUILTIN(lambda)
 {
+    env = env;  /* (shut up about unused variables, gcc!) */
+
     Var *formals = car (argv);
     Var *body    = car (cdr (argv));
 
-    LISPFunction f;
-    f.env  = formals;
-    f.body = body;
+    if (formals->type == VAR_PAIR)
+    {
+        LISPFunction f;
+        f.env  = formals;
+        f.body = body;
 
-    _Function fn;
-    fn.type = FN_LISPFN;
-    fn.fn = f;
+        _Function fn;
+        fn.type = FN_LISPFN;
+        fn.fn = f;
 
-    return var_atom (atm_fn (fn));
+        return var_atom (atm_fn (fn));
+    }
+    else
+    {   return mkerr_var (EC_INVALID_ARG,
+                          "%s -- Invalid argument list. %v is not a List",
+                          __func__,
+                          formals);
+    }
 }
 
 /* define:  (define <identifier> <value>)
  *
  * Defines <identifier> to point to <value> in current environment */
-/* TODO: search env for a variable matching <identifier> instead
- *       of always adding it to the list */
 MKBUILTIN(define)
 {
     Var *identifier = car (argv);
     Var *value      = eval (car (cdr (argv)), env);
 
-    Var *p = var_pair (identifier, value);
-    env->p.cdr = cons (env->p.car, env->p.cdr);
-    env->p.car = p;
-    return env;
+    if (identifier->type == VAR_ATOM && identifier->a.type == ATM_IDENTIFIER)
+    {
+        /* try `set!' first, so we avoid duplicate variables */
+        if (_builtin_set (argv, env)->type != VAR_UNDEFINED)
+        {
+            /* `set!' failed, so we add `identifier' to the env */
+            Var *p = var_pair (identifier, value);
+            env->p.cdr = cons (env->p.car, env->p.cdr);
+            env->p.car = p;
+        }
+        return var_undefined();
+    }
+    else
+    {   return mkerr_var (EC_INVALID_ARG,
+                          "%s -- Invalid identifier. %v is not an ID",
+                          __func__,
+                          identifier);
+    }
 }
 
 
@@ -124,14 +220,14 @@ MKBUILTIN(define)
  * followed if <test> DOES NOT evaluate to `#f' */
 MKBUILTIN(if)
 {
-    Var *test       = car (argv),
+    Var *test       = eval (car (argv), env),
         *consequent = car (cdr (argv)),
         *alternate  = car (cdr (cdr (argv)));
 
     debug ("test: %v  consequent: %v  alternate: %v",
            test, consequent, alternate);
 
-    if (eq (eval (test, env), var_false())->a.boolean == true)
+    if (eq (test, var_false())->a.boolean == true)
     {   return eval (alternate, env);
     }
     else
@@ -140,33 +236,41 @@ MKBUILTIN(if)
 }
 
 
-/* set!:    (set! <variable> <expression>)
+/* set!:    (set! <identifier> <expression>)
  *
- * Sets the Var identified by <variable> to the evaluation of
+ * Sets the Var identified by <identifier> to the evaluation of
  * <expression>. */
 MKBUILTIN(set)
 {
     bool found_id = false;
 
-    Var *variable   = car (argv);
+    Var *id         = car (argv);
     Var *expression = eval (car (cdr (argv)), env);
 
-    for (Var *c = env; c->type != VAR_NIL; c = cdr (c))
-    {   if (eq (car (car (c)), variable)->a.boolean)
-        {
-            found_id = true;
-            c->p.car->p.cdr = expression;
-            break;
+    if (id->type == VAR_ATOM && id->a.type == ATM_IDENTIFIER)
+    {
+        for (Var *c = env; c->type != VAR_NIL; c = cdr (c))
+        {   if (eq (car (car (c)), id)->a.boolean)
+            {
+                found_id = true;
+                c->p.car->p.cdr = expression;
+                break;
+            }
         }
-    }
 
-    if (found_id)
-    {   return var_undefined();
+        if (found_id)
+        {   return var_undefined();
+        }
+        else
+        {   return mkerr_var (EC_INVALID_ARG,
+                              "Couldn't find Identifier %v",
+                              car (argv));
+        }
     }
     else
     {   return mkerr_var (EC_INVALID_ARG,
-                          "Couldn't find Identifier %v",
-                          car (argv));
+                          "%s -- Invalid identifier. %v is not an ID",
+                          __func__, id);
     }
 }
 

@@ -38,7 +38,6 @@ int print_var (FILE *stream,
             return fprintf (stream, "<undefined>");
             break;
         }
-        return fprintf (stream, "jasldjalssjd");
     }
     else
     {   return fprintf (stream, "NULL");
