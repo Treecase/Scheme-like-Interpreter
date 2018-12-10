@@ -2,7 +2,6 @@
  * Evaluate token lists
  *
  */
-/* TODO: error checking */
 
 #include "eval.h"
 #include "data.h"
@@ -15,19 +14,12 @@
 
 
 Var *pair_up (Var *a, Var *b);
-
-Var *appq (Var *m);
-Var *list (Var *x, Var *y);
-Var *assoc (Var *x, Var *y);
-Var *evcon (Var *e, Var *a);
-Var *evlis (Var *e, Var *a);
-Var *append (Var *x, Var *y);
-Var *pair (Var *x, Var *y);
+Var *assoc (Var *id, Var *env);
 
 
 
-/* apply: given `f' and `args', return the value of applying
- *        S-Function `f' to `args' */
+/* apply: given an S-Function `f' and an Environment `args',
+ *        return the value of applying `f' over `args' */
 Var *apply (Var *f, Var *args, Var *env)
 {
     if (f->type == VAR_ATOM && f->a.type == ATM_FUNCTION)
@@ -52,10 +44,8 @@ Var *apply (Var *f, Var *args, Var *env)
     return mkerr_var (EC_GENERAL, "%v is not a Function", f);
 }
 
-/* pair_up: pair each `x' in a with each `y' in b
- *          (eg.  pair_up ((a b c) (1 2 3))
- *                ==> ((a 1) (b 2) (c 3))
- */
+/* pair_up: for `a' and `b' of form (x1 x2 ... xN) and (y1 y2 ... yN,
+ *          return a list of form ((x1 y1) (x2 y2) ... (xN yN)) */
 Var *pair_up (Var *a, Var *b)
 {
     if (a->type == VAR_NIL && b->type == VAR_NIL)
@@ -65,19 +55,6 @@ Var *pair_up (Var *a, Var *b)
     {   debug ("pairing %v  and  %v", car (a), car (b));
         return cons (cons (car (a), car (b)),
                      pair_up (cdr (a), cdr (b)));
-    }
-}
-
-/* appq: recursively quote a list */
-Var *appq (Var *m)
-{
-    if (m->type == VAR_NIL)
-    {   return var_nil();
-    }
-    else
-    {   return cons (list (var_atom (atm_str (mkstring ("quote"))),
-                           car (m)),
-                     appq (cdr (m)));
     }
 }
 
@@ -111,89 +88,29 @@ Var *eval (Var *e, Var *a)
     return mkerr_var (EC_BAD_SYNTAX, "eval -- %v does not match any evaluation rules", e);
 }
 
-/* assoc: when `y' is a list of form ((u1 v1) (u2 v2) ... (uN vN)),
- *        and x is one of the `u's, return the corresponding v */
-Var *assoc (Var *x, Var *y)
+/* assoc: `env' is a list of form ((id1 val1) (id2 val2) ... (idN valN));
+ *         return the `val' corresponding to `id' */
+Var *assoc (Var *id, Var *env)
 {
-    //debug ("assoc %v in %v", x, y);
-    if (x->a.type == ATM_IDENTIFIER)
+    //debug ("assoc %v in %v", id, env);
+    if (id->a.type == ATM_IDENTIFIER)
     {
-        if (y->type == VAR_NIL)
-        {   return mkerr_var (EC_UNBOUND_VAR, "%v not found", x);
+        if (env->type == VAR_NIL)
+        {   return mkerr_var (EC_UNBOUND_VAR, "%v not found", id);
         }
         else
         {
-            if (eq (car (car (y)), x)->a.boolean)
-            {   debug ("found %v ==> %v", x, cdr (car (y)));
-                return cdr (car (y));
+            if (eq (car (car (env)), id)->a.boolean)
+            {   debug ("found %v ==> %v", id, cdr (car (env)));
+                return cdr (car (env));
             }
             else
-            {   return assoc (x, cdr (y));
+            {   return assoc (id, cdr (env));
             }
         }
     }
     else
-    {   return x;
+    {   return id;
     }
-}
-
-/* evcon: conditionally execute an expression */
-Var *evcon (Var *c, Var *a)
-{
-    if (c->type != VAR_NIL)
-    {
-        if (eval (car (car (c)), a)->a.boolean)
-        {   return eval (car (cdr (car (c))), a);
-        }
-        else
-        {   return evcon (cdr (c), a);
-        }
-    }
-    return mkerr_var (EC_INVALID_ARG, "evcon -- got NULL conditional!");
-}
-
-/* evlis: evaluate each item in a list, returning
- *        a list of the results */
-Var *evlis (Var *m, Var *a)
-{
-    if (m->type == VAR_NIL)
-    {   return var_nil();
-    }
-    else
-    {   return cons (eval (car (m), a),
-                     evlis (cdr (m), a));
-    }
-}
-
-/* append: append x to y */
-Var *append (Var *x, Var *y)
-{
-    if (x->type == VAR_NIL)
-    {   return y;
-    }
-    else
-    {   return cons (car (x), append (cdr (x), y));
-    }
-}
-
-/* pair: this function gives the list of pairs of corresponding
- *       elements of the lists x and y. */
-Var *pair (Var *x, Var *y)
-{
-    if (x->type == VAR_NIL && y->type == VAR_NIL)
-    {   return var_nil();
-    }
-    else if (x->type != VAR_ATOM && y->type != VAR_ATOM)
-    {
-        return cons (list (car (x), car (y)),
-                     pair (cdr (x), cdr (y)));
-    }
-    return mkerr_var (EC_INVALID_ARG, "pair -- cannot cons %v and %v", x, y);
-}
-
-/* list: given `e1', `e2', etc., return (e1 (e2 ... (eN . nil)...)) */
-Var *list (Var *x, Var *y)
-{
-    return var_pair (x, var_pair (y, var_nil()));
 }
 
