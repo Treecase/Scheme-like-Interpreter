@@ -16,22 +16,22 @@
  */
 typedef struct Atom
 {   union
-    {   bool       boolean;
-        double     num;
-        String     str;
-        String     sym;
-        Identifier id;
-        Error      err;
-        _Function  fn;
+    {   bool        boolean;
+        double      num;
+        String      str;
+        struct Var *sym;
+        Identifier  id;
+        Error       err;
+        _Function   fn;
     };
     enum AtomType
-    {   ATM_BOOLEAN,
-        ATM_NUMBER,
-        ATM_STRING,
-        ATM_SYMBOL,
-        ATM_IDENTIFIER,
-        ATM_ERROR,
-        ATM_FUNCTION,
+    {   ATM_BOOLEAN    = 0x00,
+        ATM_NUMBER     = 0x01,
+        ATM_STRING     = 0x02,
+        ATM_SYMBOL     = 0x04,
+        ATM_IDENTIFIER = 0x08,
+        ATM_ERROR      = 0x10,
+        ATM_FUNCTION   = 0x20,
     } type;
 } Atom;
 
@@ -66,7 +66,7 @@ Var *var_false(void);
 Atom atm_bool (bool b);
 Atom atm_num (double n);
 Atom atm_str (String s);
-Atom atm_sym (String s);
+Atom atm_sym (Var *s);
 Atom atm_id (Identifier i);
 Atom atm_err (Error e);
 Atom atm_fn (_Function f);

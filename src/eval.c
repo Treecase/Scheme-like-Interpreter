@@ -30,22 +30,26 @@ Var *pair (Var *x, Var *y);
  *        S-Function `f' to `args' */
 Var *apply (Var *f, Var *args, Var *env)
 {
-    if (f->a.fn.type == FN_BUILTIN)
-    {   /* builtin */
-        debug ("applying %v(%v) with %v", f, args, env);
-        return f->a.fn.builtin.fn (args, env);
-    }
-    else
-    {   /* lispfn */
-        Var *p = pair_up (f->a.fn.fn.env, args);
-        Var *tmpenv = cons (car (p), env);
-
-        for (Var *t = cdr (p); t->type != VAR_NIL; t = cdr (t))
-        {   tmpenv = cons ( car (t), tmpenv );
+    if (f->type == VAR_ATOM && f->a.type == ATM_FUNCTION)
+    {
+        if (f->a.fn.type == FN_BUILTIN)
+        {   /* builtin */
+            debug ("applying %v(%v) with %v", f, args, env);
+            return f->a.fn.builtin.fn (args, env);
         }
-        debug ("applying %v(%v) with %v", f, args, tmpenv);
-        return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
+        else
+        {   /* lispfn */
+            Var *p = pair_up (f->a.fn.fn.env, args);
+            Var *tmpenv = cons (car (p), env);
+
+            for (Var *t = cdr (p); t->type != VAR_NIL; t = cdr (t))
+            {   tmpenv = cons ( car (t), tmpenv );
+            }
+            debug ("applying %v[%v] with %v", f, args, tmpenv);
+            return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
+        }
     }
+    return mkerr_var (EC_GENERAL, "%v is not a Function", f);
 }
 
 /* pair_up: pair each `x' in a with each `y' in b
@@ -58,8 +62,7 @@ Var *pair_up (Var *a, Var *b)
     {   return var_nil();
     }
     else
-    {
-        debug ("pairing %v  and  %v", car (a), car (b));
+    {   debug ("pairing %v  and  %v", car (a), car (b));
         return cons (cons (car (a), car (b)),
                      pair_up (cdr (a), cdr (b)));
     }

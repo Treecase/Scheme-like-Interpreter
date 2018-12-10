@@ -19,7 +19,8 @@ typedef struct Token
         TOK_RPAREN = 0x04,
         TOK_DOT    = 0x08,
         TOK_VBAR   = 0x10,
-        TOK_END    = 0x20
+        TOK_QUOTE  = 0x20,
+        TOK_END    = 0x40
     } type;
 } Token;
 

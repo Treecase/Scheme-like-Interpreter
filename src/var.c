@@ -67,10 +67,10 @@ Atom atm_str (String s)
     return a;
 }
 
-Atom atm_sym (String s)
+Atom atm_sym (Var *v)
 {   Atom a;
     a.type = ATM_SYMBOL;
-    a.sym = s;
+    a.sym = v;
     return a;
 }
 

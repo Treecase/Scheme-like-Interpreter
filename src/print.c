@@ -71,8 +71,7 @@ int print_atom (FILE *stream,
             break;
 
         case ATM_SYMBOL:
-            return fprintf (stream, "'%s",
-                            v->sym.chars);
+            return fprintf (stream, "(quote %v)", v->sym);
             break;
 
         case ATM_IDENTIFIER:

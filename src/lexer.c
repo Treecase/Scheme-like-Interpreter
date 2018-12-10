@@ -13,8 +13,8 @@
 
 
 
-char const *const special_char = ".()|";
-char const *const special_nonnumeric_char = "()|";
+char const *const special_char = ".()|'";
+char const *const special_nonnumeric_char = "()|'";
 
 int is_special (char ch);
 int is_special_nonnumeric (char ch);
@@ -61,6 +61,10 @@ Token *lex (char const *input)
 
             case '|':
                 output[output_len].type = TOK_VBAR;
+                break;
+
+            case '\'':
+                output[output_len].type = TOK_QUOTE;
                 break;
 
             default:
@@ -137,6 +141,9 @@ void print_token (Token t)
         break;
     case TOK_VBAR:
         printf ("VBAR");
+        break;
+    case TOK_QUOTE:
+        printf ("QUOTE");
         break;
     case TOK_END:
         printf ("<END>(hey, what's this doing here?)");

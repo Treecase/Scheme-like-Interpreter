@@ -3,7 +3,7 @@ An interpreter for a Scheme-like language.
   
   
 Currently supports:
- * Number, String, and Boolean literals
+ * Number, String, Symbol, and Boolean literals
  * Identifiers (including vertical bar notation)
  * Primitive math operations (ie `+ - / *`)
  * `define`

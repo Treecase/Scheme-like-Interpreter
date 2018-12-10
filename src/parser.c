@@ -61,6 +61,9 @@ static char *token_types (enum TokenType t)
         return "DOT";
     case TOK_VBAR:
         return "VBAR";
+    case TOK_QUOTE:
+        return "QUOTE";
+        break;
     case TOK_END:
         return "END";
     }
@@ -142,10 +145,6 @@ Var *parse_atom(void)
         /* String */
         else if (t.value[0] == '"' && strlen (t.value) > 1 && t.value[strlen (t.value)-1] == '"')
         {   v = var_atom (atm_str (mknstring (t.value+1, strlen (t.value)-2)));
-        }
-        /* Symbol */
-        else if (t.value[0] == '\'')
-        {   v = var_atom (atm_sym (mkstring (t.value+1)));
         }
         /* Identifier */
         else
@@ -275,6 +274,13 @@ Var *parse_expr(void)
             }
             value = var_atom (atm_id (id));
             next();
+        }
+        /* '<symbol> */
+        else if (tokens->type == TOK_QUOTE)
+        {
+            rprintf ("%s: <symbol>\n", __func__);
+            next();
+            value = var_atom (atm_sym (parse_expr()));
         }
         /* <atom> */
         else if (tokens->type == TOK_TOKEN)
