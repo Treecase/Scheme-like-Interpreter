@@ -34,6 +34,8 @@ char *lisp_command_generator (char const *text, int state);
 
 Var *get_default_env(void);
 
+Var *default_env = NULL;
+
 
 
 /* an s-expression interpreter */
@@ -51,7 +53,7 @@ int main (int argc, char *argv[]) {
 
     /* the default_env contains the primitive functions,
      * such as `+', `define', `if', etc. */
-    Var *default_env = get_default_env();
+    default_env = get_default_env();
 
 
     /* Loop: read input from the user, evaluate it,
@@ -146,14 +148,22 @@ char **lisp_command_complete (char const *text, int start, int end)
 char *lisp_command_generator (char const *text, int state)
 {
     static int len;
-    static size_t i;
+    static Var *cmd;
 
     if (!state)
-    {   i = 0;
+    {
         len = strlen (text);
+        cmd = default_env;
     }
 
-    /* TODO: search through environments for completions */
+    while (cmd->type != VAR_NIL)
+    {
+        char *id = car (car (cmd))->a.id.chars;
+        cmd = cdr (cmd);
+        if (strncasecmp (id, text, len) == 0)
+        {   return strdup (id);
+        }
+    }
     return NULL;
 }
 
