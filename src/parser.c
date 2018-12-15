@@ -16,7 +16,6 @@
  *  | (<expr> <expr>... . <expr>) ==> (<expr>.(...(<expr.<expr>)...))
  *
  */
-/* TODO: error hardening */
 
 #include "parser.h"
 #include "lexer.h"
@@ -41,9 +40,14 @@ static jmp_buf err_context;
 static bool error_occurred = false;
 static Var *errmsg = NULL;
 
+static bool parser_at_EOF = false;
+
 static int depth = 0;
 
 Token const *tokens = NULL;
+
+
+void append (Var *list, Var *end);
 
 
 
@@ -81,6 +85,7 @@ Token next(void)
     }
     else
     {   debug ("Parser: End of Input\n");
+        parser_at_EOF = true;
     }
     return *tokens;
 }
@@ -91,36 +96,44 @@ Var *parse_expr(void);
 
 
 
-/* parse: initiate the parsing process
- * TODO: copy input to `tokens' instead of assigning it
- */
+
+/* parse: initiate the parsing process */
 Var *parse (Token const *input)
 {
     tokens = input;
     depth = -DEPTH_INC;
-    Var *result = NULL;
+
+    Var *result = var_pair(NULL, NULL);
 
     error_occurred = false;
     errmsg = NULL;
 
-    /* setup a jump point for if parse_expr fails */
-    if (!setjmp (err_context))
-    {   result = parse_expr();
-    }
-    /* if an error occurred, longjmp will jump here */
-    else
-    {   if (!error_occurred)
-        {   error ("an error occurred!");
+
+    /* this loops, in order to parse multi-expression programs*/
+    while (parser_at_EOF == false)
+    {
+        /* setup a jump point for if parse_expr fails */
+        if (!setjmp (err_context))
+        {   append (result, parse_expr());
+        }
+        /* if an error occurred, longjmp will jump here */
+        else
+        {   if (!error_occurred)
+            {   error ("an error occurred!");
+                error_occurred = true;
+                append (result, errmsg);
+            }
+        }
+        if (!error_occurred)
+        {   /* IMPORTANT: trigger the setjmp in order to avoid
+             * ``some kind of subtle or unsubtle chaos''(setjmp(3):63)
+             * if no error actually occurred */
             error_occurred = true;
-            result = errmsg;
+            longjmp (err_context, 1);
         }
     }
-    /*  */
-    if (!error_occurred)
-    {   error_occurred = true;
-        longjmp (err_context, 1);
-    }
-    return result;
+    parser_at_EOF = false;
+    return cdr (result);
 }
 
 
@@ -159,7 +172,7 @@ Var *parse_atom(void)
     else
     {   error ("got bad token type '%s'", token_types (t.type));
         v = var_nil();
-        exit(1);
+        exit (1);
     }
 
     return v;
@@ -180,14 +193,12 @@ Var *parse_expr(void)
         if (tokens->type == TOK_LPAREN)
         {
             rprintf ("%s: `('\n", __func__);
-
             next();
 
             /* `()' */
             if (tokens->type == TOK_RPAREN)
             {
                 rprintf ("%s: NIL\n", __func__);
-
                 value = var_nil();
             }
             /* `(<expr>' */
@@ -289,6 +300,12 @@ Var *parse_expr(void)
             rprintf ("%s: <atom>\n", __func__);
             value = parse_atom();
         }
+        /* invalid input */
+        else
+        {   errmsg = mkerr_var (EC_GENERAL, "parser error --"
+                                "input matches no patterns");
+            longjmp (err_context, 1);
+        }
     }
     /* EOI */
     else
@@ -299,5 +316,21 @@ Var *parse_expr(void)
 
     depth -= DEPTH_INC;
     return value;
+}
+
+
+
+
+
+/* append: add `end' to the end of `list' */
+void append (Var *list, Var *end)
+{
+    if (cdr (list) == NULL)
+    {
+        list->p.cdr = var_pair (end, NULL);
+    }
+    else
+    {   append (cdr (list), end);
+    }
 }
 

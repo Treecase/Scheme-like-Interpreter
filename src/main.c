@@ -79,11 +79,16 @@ int main (int argc, char *argv[]) {
             Var *parsed = parse (tokens);
             debug ("parsed '%v'", parsed);
 
-            Var *result = eval (parsed, default_env);
+            while (parsed != NULL)
+            {
+                Var *result = eval (car (parsed), default_env);
 
-            /* Print: print the resulting eval list */
-            if (printf (": %v\n", result) == -1)
-            {   error ("printf error");
+                /* Print: print the resulting eval list */
+                if (printf (": %v\n", result) == -1)
+                {   error ("printf error");
+                }
+
+                parsed = cdr (parsed);
             }
         }
 
