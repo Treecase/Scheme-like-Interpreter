@@ -33,14 +33,6 @@ MKBUILTIN(include);
 MKBUILTIN(include_ci);
 
 
-Var *atom (Var *x);
-Var *eq (Var *x, Var *y);
-
-Var *car (Var *p);
-Var *cdr (Var *p);
-Var *cons (Var *a, Var *b);
-
-
 #ifndef _NO_UNDEF_MKDEFINE
 #undef MKBUILTIN
 #undef _GETBUILTINNAME

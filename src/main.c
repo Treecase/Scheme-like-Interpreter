@@ -13,6 +13,7 @@
 #include "eval.h"
 #include "print.h"
 #include "builtins.h"
+#include "util.h"
 
 #include <errno.h>
 #include <stdio.h>

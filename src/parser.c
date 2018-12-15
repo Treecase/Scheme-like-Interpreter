@@ -21,6 +21,7 @@
 #include "parser.h"
 #include "lexer.h"
 #include "data.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -5,7 +5,7 @@
 
 #include "eval.h"
 #include "data.h"
-#include "builtins.h"
+#include "util.h"
 
 #include <ctype.h>
 #include <stdio.h>
