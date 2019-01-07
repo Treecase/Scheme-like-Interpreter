@@ -31,14 +31,20 @@ Var *apply (Var *f, Var *args, Var *env)
         }
         else
         {   /* lispfn */
-            Var *p = pair_up (f->a.fn.fn.env, args);
-            Var *tmpenv = cons (car (p), env);
+            if (f->a.fn.fn.env->type != VAR_NIL)
+            {
+                Var *p = pair_up (f->a.fn.fn.env, args);
+                Var *tmpenv = cons (car (p), env);
 
-            for (Var *t = cdr (p); t->type != VAR_NIL; t = cdr (t))
-            {   tmpenv = cons ( car (t), tmpenv );
+                for (Var *t = cdr (p); t->type != VAR_NIL; t = cdr (t))
+                {   tmpenv = cons ( car (t), tmpenv );
+                }
+                debug ("applying %v[%v] with %v", f, args, tmpenv);
+                return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
             }
-            debug ("applying %v[%v] with %v", f, args, tmpenv);
-            return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
+            else
+            {   return eval (f->a.fn.fn.body, env);
+            }
         }
     }
     return mkerr_var (EC_GENERAL, "%v is not a Function", f);
@@ -48,13 +54,19 @@ Var *apply (Var *f, Var *args, Var *env)
  *          return a list of form ((x1 y1) (x2 y2) ... (xN yN)) */
 Var *pair_up (Var *a, Var *b)
 {
+    if (a->type == VAR_PAIR && b->type == VAR_PAIR)
+    {   debug ("pairing %v  and  %v", car (a), car (b));
+        return cons (cons (car (a), car (b)),
+                     pair_up (cdr (a), cdr (b)));
+    }
     if (a->type == VAR_NIL && b->type == VAR_NIL)
     {   return var_nil();
     }
     else
-    {   debug ("pairing %v  and  %v", car (a), car (b));
-        return cons (cons (car (a), car (b)),
-                     pair_up (cdr (a), cdr (b)));
+    {   return cons (mkerr_var (EC_INVALID_ARG,
+                          "%s -- Invalid arguments %v, %v. Maybe there's a length difference?",
+                          __func__, a, b),
+                     var_nil());
     }
 }
 

@@ -103,7 +103,7 @@ Var *parse (Token const *input)
     tokens = input;
     depth = -DEPTH_INC;
 
-    Var *result = var_pair(NULL, NULL);
+    Var *result = var_pair (NULL, NULL);
 
     error_occurred = false;
     errmsg = NULL;
@@ -310,6 +310,8 @@ Var *parse_expr(void)
     /* EOI */
     else
     {   rprintf ("END OF INPUT\n");
+        parser_at_EOF = true;
+        value = var_nil();
     }
 
     rprintf ("%s: got '%v'\n", __func__, value);

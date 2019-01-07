@@ -159,10 +159,10 @@ MKBUILTIN(lambda)
 {
     env = env;  /* (shut up about unused variables, gcc!) */
 
-    Var *formals = car (argv);
-    Var *body    = car (cdr (argv));
+    Var *formals = car (argv),
+        *body    = car (cdr (argv));
 
-    if (formals->type == VAR_PAIR)
+    if (formals->type == VAR_PAIR || formals->type == VAR_NIL)
     {
         LISPFunction f;
         f.env  = formals;
