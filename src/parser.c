@@ -105,6 +105,8 @@ Var *parse (Token const *input)
 
     Var *result = var_pair (NULL, NULL);
 
+    bool false_alarm = false;
+
     error_occurred = false;
     errmsg = NULL;
 
@@ -113,22 +115,30 @@ Var *parse (Token const *input)
     while (parser_at_EOF == false)
     {
         /* setup a jump point for if parse_expr fails */
-        if (!setjmp (err_context))
+        if (setjmp (err_context) == 0)
         {   append (result, parse_expr());
         }
         /* if an error occurred, longjmp will jump here */
         else
-        {   if (!error_occurred)
-            {   error ("an error occurred!");
+        {   if (!false_alarm)
+            {
+                error ("an error occurred: %v!", errmsg);
                 error_occurred = true;
-                append (result, errmsg);
+                false_alarm = false;
+                return var_pair (errmsg, NULL);
+            }
+            else
+            {   debug ("false alarm.");
+                error_occurred = false;
+                false_alarm = false;
+                continue;
             }
         }
         if (!error_occurred)
         {   /* IMPORTANT: trigger the setjmp in order to avoid
              * ``some kind of subtle or unsubtle chaos''(setjmp(3):63)
              * if no error actually occurred */
-            error_occurred = true;
+            false_alarm = true;
             longjmp (err_context, 1);
         }
     }
@@ -184,7 +194,6 @@ Var *parse_expr(void)
     depth += DEPTH_INC;
 
     Var *value = NULL;
-
 
     /* non-empty */
     if (tokens->type != TOK_END)
@@ -303,7 +312,7 @@ Var *parse_expr(void)
         /* invalid input */
         else
         {   errmsg = mkerr_var (EC_GENERAL, "parser error --"
-                                "input matches no patterns");
+                                " input matches no patterns");
             longjmp (err_context, 1);
         }
     }
