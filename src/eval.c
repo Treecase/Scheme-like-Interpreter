@@ -31,20 +31,22 @@ Var *apply (Var *f, Var *args, Var *env)
         }
         else
         {   /* lispfn */
-            if (f->a.fn.fn.env->type != VAR_NIL)
-            {
-                Var *p = pair_up (f->a.fn.fn.env, args);
-                Var *tmpenv = cons (car (p), env);
+            int    arg_count = length_of_list (args),
+                fn_arg_count = length_of_list (f->a.fn.fn.env);
 
-                for (Var *t = cdr (p); t->type != VAR_NIL; t = cdr (t))
-                {   tmpenv = cons ( car (t), tmpenv );
-                }
-                debug ("applying %v[%v] with %v", f, args, tmpenv);
-                return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
+            if (arg_count != fn_arg_count)
+            {
+                return mkerr_var (EC_INVALID_ARG, "arg count mismatch");
             }
-            else
-            {   return eval (f->a.fn.fn.body, env);
+
+            Var *p = pair_up (f->a.fn.fn.env, args);
+            Var *tmpenv = var_nil();
+
+            for (Var *t = p; t->type != VAR_NIL; t = cdr (t))
+            {   tmpenv = cons ( car (t), tmpenv );
             }
+            debug ("applying %v[%v] with %v", f, args, tmpenv);
+            return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
         }
     }
     return mkerr_var (EC_GENERAL, "%v is not a Function", f);

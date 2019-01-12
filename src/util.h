@@ -18,5 +18,8 @@ Var *cdr (Var *p);
 Var *cons (Var *a, Var *b);
 
 
+int length_of_list (Var *list);
+
+
 #endif
 

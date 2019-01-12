@@ -119,3 +119,16 @@ Var *cons (Var *a, Var *b)
     return var_pair (a, b);
 }
 
+
+
+/* length_of_list: return the length of list */
+int length_of_list (Var *list)
+{
+    int len = 0;
+    for (Var *p = list; p->type == VAR_PAIR; p = cdr (p))
+    {
+        len++;
+    }
+    return len;
+}
+
