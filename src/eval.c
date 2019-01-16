@@ -26,7 +26,7 @@ Var *apply (Var *f, Var *args, Var *env)
     {
         if (f->a.fn.type == FN_BUILTIN)
         {   /* builtin */
-            debug ("applying %v(%v) with %v", f, args, env);
+            debug ("applying builtin %v(%v) with %v", f, args, env);
             return f->a.fn.builtin.fn (args, env);
         }
         else
@@ -39,14 +39,20 @@ Var *apply (Var *f, Var *args, Var *env)
                 return mkerr_var (EC_INVALID_ARG, "arg count mismatch");
             }
 
-            Var *p = pair_up (f->a.fn.fn.env, args);
-            Var *tmpenv = var_nil();
+            Var *tmpenv = pair_up (f->a.fn.fn.env, args);
 
-            for (Var *t = p; t->type != VAR_NIL; t = cdr (t))
-            {   tmpenv = cons ( car (t), tmpenv );
+            /* merge tmpenv and env */
+            for (Var *pair = tmpenv; pair->type == VAR_PAIR; pair = cdr (pair))
+            {
+                if (cdr (pair)->type == VAR_NIL)
+                {
+                    pair->p.cdr = env;
+                    break;
+                }
             }
-            debug ("applying %v[%v] with %v", f, args, tmpenv);
-            return eval (f->a.fn.fn.body, cons (car (p), tmpenv));
+
+            debug ("applying lispfn %v[%v] with %v", f, args, tmpenv);
+            return eval (f->a.fn.fn.body, tmpenv);
         }
     }
     return mkerr_var (EC_GENERAL, "%v is not a Function", f);
